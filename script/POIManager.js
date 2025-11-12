@@ -157,7 +157,7 @@ export class POIManager{
 
 	static setPOIsVisibilityRange(viewer, visibilityRangeMin, visibilityRangeMax){
 		const distanceDisplayCondition = new Cesium.DistanceDisplayCondition(visibilityRangeMin, visibilityRangeMax);
-		viewer.entities.values.forEach((entity) => {entity.label.distanceDisplayCondition = distanceDisplayCondition;});
+		viewer.entities.values.forEach(entity => entity.label.distanceDisplayCondition = distanceDisplayCondition);
 	}
 
 	static #getPOIDescription(lat, lon){

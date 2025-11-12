@@ -43,7 +43,7 @@ export class Application{
 	static #domElement = Object.freeze({
 		viewerContainer: document.getElementById('viewerContainer'),
 		coordinatesContainer: document.getElementById('coordinatesContainer'),
-		compass: document.querySelector(".compass-circle"),
+		compass: document.querySelector('.compass-circle'),
 		toggleCumbres: document.getElementById('toggleCumbres'),
 		togglePoblaciones: document.getElementById('togglePoblaciones'),
 		toggleMasasDeAgua: document.getElementById('toggleMasasDeAgua'),
@@ -79,11 +79,11 @@ export class Application{
 	}
 
 	static #prepareUI(){
-		if (!Device.isMobile() && Device.hasMouse()){ // coordinates box only visible on PCs
+		if (!Device.isMobile() && Device.hasMouse()){ // Coordinates box only visible on PCs
 			Application.#domElement.coordinatesContainer.style.display = 'flex';
 			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----<span>';
 		}
-		else {
+		else { // Panorama button only visible on mobile devices
 			Application.#domElement.btnPanorama.style.display = 'flex';
 		}
 	}
@@ -97,7 +97,7 @@ export class Application{
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
 		}
 
-		document.addEventListener("visibilitychange", Application.#onDocumentVisibilityChange);
+		document.addEventListener('visibilitychange', Application.#onDocumentVisibilityChange);
 		Application.#domElement.toggleCumbres.addEventListener('change', Application.#onCumbresToggleChange);
 		Application.#domElement.togglePoblaciones.addEventListener('change', Application.#onPoblacionesToggleChange);
 		Application.#domElement.toggleMasasDeAgua.addEventListener('change', Application.#onMasasDeAguaToggleChange);
@@ -347,7 +347,7 @@ export class Application{
 	}
 
 	static #onMinVisibilityDistanceInput(){
-		Application.#domElement.minVisibilityDistanceLabel.innerHTML = this.value + "&nbsp;km";
+		Application.#domElement.minVisibilityDistanceLabel.innerHTML = this.value + '&nbsp;km';
 	}
 
 	static #onMinVisibilityDistanceChange(){
@@ -355,7 +355,7 @@ export class Application{
 	}
 
 	static #onMaxVisibilityDistanceInput(){
-		Application.#domElement.maxVisibilityDistanceLabel.innerHTML = this.value + "&nbsp;km";
+		Application.#domElement.maxVisibilityDistanceLabel.innerHTML = this.value + '&nbsp;km';
 	}
 
 	static #onMaxVisibilityDistanceChange(){
@@ -510,10 +510,10 @@ export class Application{
 
 	// Geolocation
 	static #onBtnUserPositionClick(){
-		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute("active");
+		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
 		navigator.vibrate(100);
 
-		if (geolocationActive === "false"){
+		if (geolocationActive === 'false'){
 			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
 			Application.#domElement.btnUserPosition.setAttribute('active', 'true');
 			Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
@@ -552,8 +552,8 @@ export class Application{
 			html += '<strong>Altitud WGS84 (m)</strong>: ' + position.coords.altitude.toFixed(0) + '<br><br>';
 		}
 
-		html += '<strong>Fecha</strong>: ' + new Date(position.timestamp).toLocaleDateString("es-ES") + '<br><br>';
-		html += '<strong>Hora</strong>: ' + new Date(position.timestamp).toLocaleTimeString("es-ES") + '<br><br>';
+		html += '<strong>Fecha</strong>: ' + new Date(position.timestamp).toLocaleDateString('es-ES') + '<br><br>';
+		html += '<strong>Hora</strong>: ' + new Date(position.timestamp).toLocaleTimeString('es-ES') + '<br><br>';
 		return html;
 	}
 
@@ -574,10 +574,10 @@ export class Application{
 
 	// Panorama
 	static async #onBtnPanoramaClick(){
-		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute("active");
+		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
 		navigator.vibrate(100);
 
-		if (headingTrackingActive === "false"){
+		if (headingTrackingActive === 'false'){
 			const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
 
 			if (headingTrackerStarted){
