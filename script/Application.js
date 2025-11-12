@@ -511,7 +511,7 @@ export class Application{
 	// Geolocation
 	static #onBtnUserPositionClick(){
 		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute("active");
-		navigator.vibrate(150);
+		navigator.vibrate(100);
 
 		if (geolocationActive === "false"){
 			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
@@ -575,7 +575,7 @@ export class Application{
 	// Panorama
 	static async #onBtnPanoramaClick(){
 		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute("active");
-		navigator.vibrate(150);
+		navigator.vibrate(100);
 
 		if (headingTrackingActive === "false"){
 			const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
@@ -591,4 +591,5 @@ export class Application{
 			Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
 		}
 	}
+
 }
