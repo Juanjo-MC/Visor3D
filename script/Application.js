@@ -66,11 +66,16 @@ export class Application{
 	});
 
 	static async initialize(){
-		POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
-		await ViewerService.initialize(Application.#domElement.viewerContainer.id);
-		Application.#prepareUI();
-		Application.#bindEventListeners();
-		Application.#prepareScene();
+		try{
+			//POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
+			await ViewerService.initialize(Application.#domElement.viewerContainer.id);
+			Application.#prepareUI();
+			Application.#bindEventListeners();
+			Application.#prepareScene();
+		}
+		catch(err){
+			window.alert(err.message);
+		}
 	}
 
 	static #prepareUI(){
