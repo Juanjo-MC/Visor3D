@@ -88,7 +88,6 @@ export class DeviceHeadingTracker{
 				const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
 				let heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
 				heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
-				//heading = (heading + correction + 360) % 360;
 				const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 				DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 			});
