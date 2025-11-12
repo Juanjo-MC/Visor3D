@@ -67,7 +67,7 @@ export class Application{
 
 	static async initialize(){
 		try{
-			//POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
+			POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
 			await ViewerService.initialize(Application.#domElement.viewerContainer.id);
 			Application.#prepareUI();
 			Application.#bindEventListeners();
