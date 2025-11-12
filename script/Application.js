@@ -93,7 +93,7 @@ export class Application{
 		ViewerService.onCameraStopMove(Application.#onCameraStopMove);
 		ViewerService.onCanvasClick(Application.#onCanvasClick);
 
-		if(!Device.isMobile() && Device.hasMouse()){
+		if (!Device.isMobile() && Device.hasMouse()){
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
 		}
 
@@ -511,6 +511,7 @@ export class Application{
 	// Geolocation
 	static #onBtnUserPositionClick(){
 		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute("active");
+		navigator.vibrate(200);
 
 		if (geolocationActive === "false"){
 			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
@@ -547,7 +548,7 @@ export class Application{
 		if (altitudeMDT05){
 			html += '<strong>Altitud MDT05 (m)</strong>: ' + altitudeMDT05.toFixed(0) + '<br><br>';
 		}
-		else if(position.coords.altitude){
+		else if (position.coords.altitude){
 			html += '<strong>Altitud WGS84 (m)</strong>: ' + position.coords.altitude.toFixed(0) + '<br><br>';
 		}
 
@@ -574,11 +575,12 @@ export class Application{
 	// Panorama
 	static async #onBtnPanoramaClick(){
 		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute("active");
+		navigator.vibrate(200);
 
 		if (headingTrackingActive === "false"){
 			const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
 
-			if(headingTrackerStarted){
+			if (headingTrackerStarted){
 				Application.#domElement.btnPanorama.setAttribute('active', 'true');
 				Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
 			}
