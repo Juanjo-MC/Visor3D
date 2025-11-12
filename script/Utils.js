@@ -30,35 +30,17 @@ export class Utils{
 
 			return await response;
 		}
-			catch (err){
+		catch (err){
 			return null;
 		}
 	}
 
-/* 	static async #decompress(inputStream){
-		const decompressedStream = inputStream.pipeThrough(new DecompressionStream('gzip'));
-		const chunks = [];
-
-		for await (const chunk of decompressedStream){
-			chunks.push(chunk);
-		}
-
-		const stringBytes = await Utils.#concatUint8Arrays(chunks);
-		return new TextDecoder().decode(stringBytes);
-	} */
-	
-static async #decompress(inputStream){
-    const ds = new DecompressionStream('gzip');
-    inputStream.pipeTo(ds.writable);
-    const response = new Response(ds.readable);
-    const jsonString = await response.text(); 
-    return jsonString;
-}	
-
-	static async #concatUint8Arrays(uint8arrays){
-		const blob = new Blob(uint8arrays);
-		const buffer = await blob.arrayBuffer();
-		return new Uint8Array(buffer);
+	static async #decompress(inputStream){
+		const ds = new DecompressionStream('gzip');
+		inputStream.pipeTo(ds.writable);
+		const response = new Response(ds.readable);
+		const jsonString = await response.text();
+		return jsonString;
 	}
 
 	static getQueryStringValue(parameterName){
