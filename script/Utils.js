@@ -13,8 +13,8 @@ export class Utils{
 		const response = await Utils.#getData(url);
 
 		if (response !== null){
-			const jsonString = await Utils.#decompress(response.body);
-			return JSON.parse(jsonString);
+			const json = await Utils.#decompress(response.body);
+			return json;
 		}
 
 		return null;
@@ -39,8 +39,8 @@ export class Utils{
 		const ds = new DecompressionStream('gzip');
 		inputStream.pipeTo(ds.writable);
 		const response = new Response(ds.readable);
-		const jsonString = await response.text();
-		return jsonString;
+		const json = await response.json();
+		return json;
 	}
 
 	static getQueryStringValue(parameterName){

@@ -81,11 +81,10 @@ export class POIManager{
 	}
 	*/
 
-	static async addPOIsToViewer(viewer, poisList, renderingOptions){
+	static addPOIsToViewer(viewer, poisList, renderingOptions){
 		viewer.entities.suspendEvents();
-		let i = 0;
 
-		for (const poi of poisList){			
+		for (const poi of poisList){
 			const poiType = POIManager.getPOIType(poi.id)
 			let labelColor;
 			let poiVisible;
@@ -104,11 +103,6 @@ export class POIManager{
 			}
 
 			POIManager.addPOIToViewer(viewer, poi.id, poi.name, poi.lat, poi.lon, renderingOptions.minVisibilityDistance, renderingOptions.maxVisibilityDistance, labelColor, poiVisible);
-			i += 1;
-			
-			if (i % 100 === 0){
-				await scheduler.yield();
-			}
 		}
 
 		viewer.entities.resumeEvents();
@@ -147,19 +141,9 @@ export class POIManager{
 		catch (err){}
 	}
 
-	static async removePOIsFromViewer(viewer, poisList){		
+	static removePOIsFromViewer(viewer, poisList){
 		viewer.entities.suspendEvents();
-		let i = 0;
-		
-		for (const poi of poisList) {
-			viewer.entities.removeById(poi.id)
-			i += 1;
-			
-			if (i % 100 === 0){
-				await scheduler.yield();
-			}
-		}
-		
+		poisList.forEach(poi => viewer.entities.removeById(poi.id));
 		viewer.entities.resumeEvents();
 	}
 

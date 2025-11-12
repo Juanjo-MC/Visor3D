@@ -177,7 +177,7 @@ export class Application{
 			maxVisibilityDistance: 20000,
 		}
 
-		await POIManager.addPOIsToViewer(ViewerService.viewer, pois, renderingOptions);
+		POIManager.addPOIsToViewer(ViewerService.viewer, pois, renderingOptions);
 		ViewerService.flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch);
 	}
 
@@ -217,8 +217,8 @@ export class Application{
 				maxVisibilityDistance: visibilityDistance.max,
 			}
 
-			await POIManager.removePOIsFromViewer(ViewerService.viewer, poisToRemove);
-			await POIManager.addPOIsToViewer(ViewerService.viewer, poisToAdd, renderingOptions);
+			POIManager.removePOIsFromViewer(ViewerService.viewer, poisToRemove);
+			POIManager.addPOIsToViewer(ViewerService.viewer, poisToAdd, renderingOptions);
 			ViewerService.refreshScene();
 		}
 	}
@@ -228,7 +228,7 @@ export class Application{
 
 		// On touch devices, users may tap slightly above terrain features, over the sky area
 		// To handle this, we search for coordinates up to 20 pixels below the touch position
-		for (let i = 0; i < 20; i++  ){
+		for (let i = 0; i < 20; i++){
 			clickCartographicPosition = ViewerService.getCartographicScreenPosition(click.position);
 			click.position.y += 1;
 
