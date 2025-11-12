@@ -16,7 +16,7 @@ export class DeviceHeadingTracker{
 			await DeviceHeadingTracker.#requestPermissions();
 			// Set #previousHeading to the current viewer camera heading, that way the camera will start rotating from there to the curent device heading
 			DeviceHeadingTracker.#previousHeading = cameraHeading;
-			
+
 			// Start sensor
 			if ('AbsoluteOrientationSensor' in window){
 				DeviceHeadingTracker.#startAbsoluteOrientationSensor();
@@ -28,11 +28,13 @@ export class DeviceHeadingTracker{
 			}
 			else{
 				window.alert('Sensores de orientación no soportados en este dispositivo.');
+				DeviceHeadingTracker.#previousHeading = null;
 				return false;
 			}
 		}
 		catch (err){
 			DeviceHeadingTracker.#previousHeading = null;
+			window.alert(err.message);
 			return false;
 		}
 	}
