@@ -71,7 +71,7 @@ export class Application{
 			await ViewerService.initialize(Application.#domElement.viewerContainer.id);
 			Application.#prepareUI();
 			Application.#bindEventListeners();
-			Application.#prepareScene();
+			await Application.#prepareScene();
 		}
 		catch(err){
 			window.alert(err.message);
@@ -81,7 +81,7 @@ export class Application{
 	static #prepareUI(){
 		if (!Device.isMobile() && Device.hasMouse()){ // coordinates box only visible on PCs
 			Application.#domElement.coordinatesContainer.style.display = 'flex';
-			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud (m)</strong>:&nbsp;----<span>';
+			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----<span>';
 		}
 		else {
 			Application.#domElement.btnPanorama.style.display = 'flex';
@@ -117,7 +117,7 @@ export class Application{
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 	}
 
-	static #prepareScene(){
+	static async #prepareScene(){
 		// Restore last used cartography
 		const lastCartography = localStorage.getItem('lastCartography');
 
@@ -177,7 +177,7 @@ export class Application{
 			maxVisibilityDistance: 20000,
 		}
 
-		POIManager.addPOIsToViewer(ViewerService.viewer, pois, renderingOptions);
+		await POIManager.addPOIsToViewer(ViewerService.viewer, pois, renderingOptions);
 		ViewerService.flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch);
 	}
 
@@ -194,7 +194,7 @@ export class Application{
 		}
 	}
 
-	static #onCameraStopMove(){
+	static async #onCameraStopMove(){
 		const cameraPosition = ViewerService.getCameraPosition();
 		const lat = cameraPosition.lat;
 		const lon = cameraPosition.lon;
@@ -217,8 +217,8 @@ export class Application{
 				maxVisibilityDistance: visibilityDistance.max,
 			}
 
-			POIManager.removePOIsFromViewer(ViewerService.viewer, poisToRemove);
-			POIManager.addPOIsToViewer(ViewerService.viewer, poisToAdd, renderingOptions);
+			await POIManager.removePOIsFromViewer(ViewerService.viewer, poisToRemove);
+			await POIManager.addPOIsToViewer(ViewerService.viewer, poisToAdd, renderingOptions);
 			ViewerService.refreshScene();
 		}
 	}
@@ -306,7 +306,7 @@ export class Application{
 				altitude = '----';
 			}
 
-		Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;' + lat + '&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;' + lon + '&nbsp;&nbsp;<strong>Altitud (m)</strong>:&nbsp;' + altitude + '<span>';
+		Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;' + lat + '&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;' + lon + '&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;' + altitude + '<span>';
 	}
 
 	static #onDocumentVisibilityChange(){
@@ -511,7 +511,7 @@ export class Application{
 	// Geolocation
 	static #onBtnUserPositionClick(){
 		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute("active");
-		navigator.vibrate(100);
+		navigator.vibrate(150);
 
 		if (geolocationActive === "false"){
 			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
@@ -575,7 +575,7 @@ export class Application{
 	// Panorama
 	static async #onBtnPanoramaClick(){
 		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute("active");
-		navigator.vibrate(100);
+		navigator.vibrate(150);
 
 		if (headingTrackingActive === "false"){
 			const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
@@ -591,5 +591,4 @@ export class Application{
 			Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
 		}
 	}
-
 }
