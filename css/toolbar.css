@@ -1,0 +1,47 @@
+details.toolbar {
+	position: absolute;
+	top: 7px;
+	left: 7px;
+	background: var(--color-menu-background-tr);
+	color: var(--color-white);
+	font: var(--font-large);
+	width: 42px;
+	border-radius: 21px;
+	overflow: hidden;
+}
+
+details.toolbar > summary {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 42px;
+	cursor: pointer;
+	list-style: none; /* Removes the default arrow */
+}
+
+details.toolbar > summary::-webkit-details-marker {
+	display: none;
+}
+
+.toolbar-buttons {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.toolbar-buttons button {
+	background: transparent;
+	font: inherit;
+	color: inherit;
+	border: none;
+	cursor: pointer;
+	width: 38px;
+	height: 38px;
+	border-radius: 50%;
+	margin: 2px 0;
+	transition: background-color 0.2s ease;
+}
+
+.toolbar-buttons button:hover {
+	background-color: var(--color-blue-hover-tr);
+}

@@ -1,0 +1,49 @@
+/* Buttons */
+
+.button {
+	padding: 10px;
+	border: none;
+	border-radius: var(--controls-border-radius);
+	background-color: var(--color-blue-tr);
+	color: var(--color-white);
+	font: var(--font-standard);
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	box-sizing: border-box;
+	height: 38px;
+	line-height: 1;
+	transition: background-color 0.2s ease;
+	display: flex;
+}
+
+.button:hover {
+	background-color: var(--color-blue-hover-tr);
+}
+
+/* Text boxes */
+
+.textbox {
+	padding: 0 8px;
+	font: var(--font-small);
+	border-radius: var(--controls-border-radius);
+	background-color: transparent;
+	border: 1px solid var(--color-grey-tr);
+	height: 36px;
+	line-height: 1;
+	color: var(--color-white);
+	box-sizing: border-box;
+}
+
+.textbox::placeholder {
+	color: var(--color-grey-tr);
+}
+
+.textbox::selection {
+	background-color: var(--color-blue-tr);
+}
+
+.textbox:focus {
+	border-color: var(--color-blue-tr);
+	outline: none;
+}

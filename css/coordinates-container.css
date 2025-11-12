@@ -1,0 +1,13 @@
+.coordinates-container {
+	position: fixed;
+	left: 50%;
+	bottom: 7px;
+	transform: translateX(-50%);
+	padding: 5px 8px;
+	border-radius: 4px;
+	background: var(--color-menu-background-tr);
+	color: var(--color-white);
+	font: var(--font-small);
+	user-select: none;
+	display: none;
+}
