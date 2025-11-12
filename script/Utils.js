@@ -35,7 +35,7 @@ export class Utils{
 		}
 	}
 
-	static async #decompress(inputStream){
+/* 	static async #decompress(inputStream){
 		const decompressedStream = inputStream.pipeThrough(new DecompressionStream('gzip'));
 		const chunks = [];
 
@@ -45,7 +45,15 @@ export class Utils{
 
 		const stringBytes = await Utils.#concatUint8Arrays(chunks);
 		return new TextDecoder().decode(stringBytes);
-	}
+	} */
+	
+static async #decompress(inputStream){
+    const ds = new DecompressionStream('gzip');
+    inputStream.pipeTo(ds.writable);
+    const response = new Response(ds.readable);
+    const jsonString = await response.text(); 
+    return jsonString;
+}	
 
 	static async #concatUint8Arrays(uint8arrays){
 		const blob = new Blob(uint8arrays);
