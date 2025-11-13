@@ -69,6 +69,8 @@ export class Application{
 		try{
 			POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
 			await ViewerService.initialize(Application.#domElement.viewerContainer.id);
+			await POIManager.initialize(ViewerService.viewer);
+			await MarkersManager.initialize(ViewerService.viewer);
 			Application.#prepareUI();
 			Application.#bindEventListeners();
 			await Application.#prepareScene();
@@ -83,7 +85,7 @@ export class Application{
 			Application.#domElement.coordinatesContainer.style.display = 'flex';
 			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----<span>';
 		}
-		else { // Panorama button only visible on mobile devices
+		else{ // Panorama button only visible on mobile devices
 			Application.#domElement.btnPanorama.style.display = 'flex';
 		}
 	}
@@ -137,10 +139,10 @@ export class Application{
 			if (name === 'null' || name.length === 0){
 				let description = '<a href="geo:' + lat.toFixed(6) + ',' + lon.toFixed(6) + '">' + '<strong>Latitud</strong>: ' + lat.toFixed(6) + '</a><br><br>';
 				description += '<a href="geo:' + lat.toFixed(6) + ',' + lon.toFixed(6) + '">' + '<strong>Longitud</strong>: ' + lon.toFixed(6) + '</a>';
-				MarkersManager.createMarker(ViewerService.viewer, lat, lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
+				MarkersManager.createMarker(lat, lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
 			}
 			else{
-				POIManager.addPOIToViewer(ViewerService.viewer, null, name, lat, lon, 10, 50000, Cesium.Color.fromBytes(226, 255, 226, 190), true);
+				POIManager.addPOIToViewer(null, name, lat, lon, 10, 50000, Cesium.Color.fromBytes(226, 255, 226, 190), true);
 			}
 		}
 		else{
@@ -177,7 +179,7 @@ export class Application{
 			maxVisibilityDistance: 20000,
 		}
 
-		POIManager.addPOIsToViewer(ViewerService.viewer, pois, renderingOptions);
+		POIManager.addPOIsToViewer(pois, renderingOptions);
 		ViewerService.flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch);
 	}
 
@@ -217,8 +219,8 @@ export class Application{
 				maxVisibilityDistance: visibilityDistance.max,
 			}
 
-			POIManager.removePOIsFromViewer(ViewerService.viewer, poisToRemove);
-			POIManager.addPOIsToViewer(ViewerService.viewer, poisToAdd, renderingOptions);
+			POIManager.removePOIsFromViewer(poisToRemove);
+			POIManager.addPOIsToViewer(poisToAdd, renderingOptions);
 			ViewerService.refreshScene();
 		}
 	}
@@ -241,14 +243,14 @@ export class Application{
 			const poi = POIFinder.findNearestPOI(clickCartographicPosition.lat, clickCartographicPosition.lon, 0.3);
 
 			if (poi){
-				const poiIsLoaded = POIManager.poiIsLoaded(ViewerService.viewer, poi.id);
-				const poiIsVisible = POIManager.poiIsVisible(ViewerService.viewer, poi.id);
+				const poiIsLoaded = POIManager.poiIsLoaded(poi.id);
+				const poiIsVisible = POIManager.poiIsVisible(poi.id);
 
 				if (poiIsLoaded && !poiIsVisible){
 					const poiElevation = await ViewerService.getElevation(poi.lat, poi.lon);
 					const labelText = poi.name + '\n' + poiElevation.toFixed(0) + ' m';
-					POIManager.setPoiLabelProperties(ViewerService.viewer, poi.id, labelText, true);
-					POIManager.showPOI(ViewerService.viewer, poi.id);
+					POIManager.setPoiLabelProperties(poi.id, labelText, true);
+					POIManager.showPOI(poi.id);
 					ViewerService.refreshScene();
 
 					setTimeout(function(){
@@ -269,10 +271,10 @@ export class Application{
 						}
 
 						const visibilityDistance = Application.#getPOIsVisibilityRange();
-						POIManager.setPoiLabelProperties(ViewerService.viewer, poi.id, poi.name, false, visibilityDistance);
+						POIManager.setPoiLabelProperties(poi.id, poi.name, false, visibilityDistance);
 
 						if (!showPOI){
-							POIManager.hidePOI(ViewerService.viewer, poi.id);
+							POIManager.hidePOI(poi.id);
 						}
 
 						ViewerService.refreshScene();
@@ -318,20 +320,20 @@ export class Application{
 
 	// POIs
 	static async #onCumbresToggleChange(){
-		await Application.#setPOIsVisibility(ViewerService.viewer, POIManager.poiType.CUMBRE, this.checked);
+		await Application.#setPOIsVisibility(POIManager.poiType.CUMBRE, this.checked);
 	}
 
 	static async #onPoblacionesToggleChange(){
-		await Application.#setPOIsVisibility(ViewerService.viewer, POIManager.poiType.POBLACION, this.checked);
+		await Application.#setPOIsVisibility(POIManager.poiType.POBLACION, this.checked);
 	}
 
 	static async #onMasasDeAguaToggleChange(){
-		await Application.#setPOIsVisibility(ViewerService.viewer, POIManager.poiType.MASA_DE_AGUA, this.checked);
+		await Application.#setPOIsVisibility(POIManager.poiType.MASA_DE_AGUA, this.checked);
 	}
 
-	static async #setPOIsVisibility(viewer, poiType, visible){
+	static async #setPOIsVisibility(poiType, visible){
 		await Application.#showSpinner();
-		POIManager.setPOIsVisibility(viewer, poiType, visible);
+		POIManager.setPOIsVisibility(poiType, visible);
 		await Application.#hideSpinner();
 		ViewerService.refreshScene();
 	}
@@ -371,7 +373,7 @@ export class Application{
 
 	static #setPOIsVisibilityRange(){
 		const visibilityDistance = Application.#getPOIsVisibilityRange();
-		POIManager.setPOIsVisibilityRange(ViewerService.viewer, visibilityDistance.min, visibilityDistance.max);
+		POIManager.setPOIsVisibilityRange(visibilityDistance.min, visibilityDistance.max);
 		ViewerService.refreshScene();
 	}
 
@@ -448,11 +450,11 @@ export class Application{
 	static #onSearchBoxInput(){
 		const searchResultsList = Application.#domElement.searchResultsList;
 
-		if (searchResultsList.length > 0) {
+		if (searchResultsList.length > 0){
 			searchResultsList.selectedIndex = -1;
 			searchResultsList.options.length = 0;
 			searchResultsList.style.display = 'none';
-			MarkersManager.removeMarker(ViewerService.viewer, Application.#geocoderMarkerId);
+			MarkersManager.removeMarker(Application.#geocoderMarkerId);
 			Application.#geocoderMarkerId = null;
 			ViewerService.refreshScene();
 		}
@@ -471,7 +473,7 @@ export class Application{
 				window.alert('No se han encontrado resultados');
 				searchBox.value = '';
 			}
-			else {
+			else{
 				for (const result of searchResults){
 					const option = new Option(result.address, result.id);
 					option.setAttribute('type', result.type);
@@ -485,14 +487,14 @@ export class Application{
 	}
 
 	static async #onSeachResultsListChange(){
-		MarkersManager.removeMarker(ViewerService.viewer, Application.#geocoderMarkerId);
+		MarkersManager.removeMarker(Application.#geocoderMarkerId);
 		Application.#geocoderMarkerId = null;
 		const resultId = Application.#domElement.searchResultsList.value;
 		const resultType = Application.#domElement.searchResultsList.selectedOptions[0].attributes.type.nodeValue;
 		const geocoderResult = await GeocodingService.find(resultId, resultType);
 		const resultAltitude = await ViewerService.getElevation(geocoderResult.lat, geocoderResult.lng);
 		const description = GeocodingService.getHtml(geocoderResult, resultAltitude);
-		Application.#geocoderMarkerId = MarkersManager.createMarker(ViewerService.viewer, geocoderResult.lat, geocoderResult.lng, geocoderResult.fullAddress, description, Application.#markerPins.GEOCODING_RESULT);
+		Application.#geocoderMarkerId = MarkersManager.createMarker(geocoderResult.lat, geocoderResult.lng, geocoderResult.fullAddress, description, Application.#markerPins.GEOCODING_RESULT);
 		ViewerService.flyToPosition(geocoderResult.lat, geocoderResult.lng, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
 	}
 
@@ -503,7 +505,7 @@ export class Application{
 		searchResultsList.options.length = 0;
 		searchResultsList.style.display = 'none';
 		searchBox.value = '';
-		MarkersManager.removeMarker(ViewerService.viewer, Application.#geocoderMarkerId);
+		MarkersManager.removeMarker(Application.#geocoderMarkerId);
 		Application.#geocoderMarkerId = null;
 		ViewerService.refreshScene();
 	}
@@ -513,13 +515,18 @@ export class Application{
 		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
 		navigator.vibrate(100);
 
-		if (geolocationActive === 'false'){
-			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
-			Application.#domElement.btnUserPosition.setAttribute('active', 'true');
-			Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
+		try{
+			if (geolocationActive === 'false'){
+				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
+				Application.#domElement.btnUserPosition.setAttribute('active', 'true');
+				Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
+			}
+			else{
+				Application.#stopGeolocation();
+			}
 		}
-		else{
-			Application.#stopGeolocation();
+		catch (err){
+			window.alert('Se ha producido un error al activar la geolocalización: ' + err.message)
 		}
 	}
 
@@ -527,14 +534,14 @@ export class Application{
 		const description = await Application.#getUserPositionDescription(position);
 
 		if (!Application.#geolocationMarkerId){
-			const entityId = MarkersManager.createMarker(ViewerService.viewer, position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
-			MarkersManager.addCircleToMarker(ViewerService.viewer, entityId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
+			const entityId = MarkersManager.createMarker(position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
+			MarkersManager.addCircleToMarker(entityId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
 			Application.#geolocationMarkerId = entityId;
 			ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
 		}
 		else{
-			MarkersManager.updateMarker(ViewerService.viewer, Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
-			MarkersManager.updateMarkerCircle(ViewerService.viewer, Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
+			MarkersManager.updateMarker(Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
+			MarkersManager.updateMarkerCircle(Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
 			ViewerService.refreshScene();
 		}
 	}
@@ -565,7 +572,7 @@ export class Application{
 
 	static #stopGeolocation(){
 		GeolocationService.stopTrackingPosition();
-		MarkersManager.removeMarker(ViewerService.viewer, Application.#geolocationMarkerId);
+		MarkersManager.removeMarker(Application.#geolocationMarkerId);
 		Application.#domElement.btnUserPosition.setAttribute('active', 'false');
 		Application.#domElement.btnUserPosition.style.color = 'rgb(237, 255, 255)';
 		ViewerService.refreshScene();
@@ -576,19 +583,23 @@ export class Application{
 	static async #onBtnPanoramaClick(){
 		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
 		navigator.vibrate(100);
+		try{
+			if (headingTrackingActive === 'false'){
+				const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
 
-		if (headingTrackingActive === 'false'){
-			const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
-
-			if (headingTrackerStarted){
-				Application.#domElement.btnPanorama.setAttribute('active', 'true');
-				Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
+				if (headingTrackerStarted){
+					Application.#domElement.btnPanorama.setAttribute('active', 'true');
+					Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
+				}
+			}
+			else{
+				DeviceHeadingTracker.stop();
+				Application.#domElement.btnPanorama.setAttribute('active', 'false');
+				Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
 			}
 		}
-		else{
-			DeviceHeadingTracker.stop();
-			Application.#domElement.btnPanorama.setAttribute('active', 'false');
-			Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
+		catch (err){
+			window.alert('Se ha producido un error al activar el sensor: ' + err.message)
 		}
 	}
 }

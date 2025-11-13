@@ -1,10 +1,15 @@
 export class POIManager{
+	static #poiDataSource = null;
 
 	static poiType = Object.freeze({
 		CUMBRE: 'C:',
 		POBLACION: 'P:',
 		MASA_DE_AGUA: 'A:',
 	});
+
+	static async initialize(viewer){
+		POIManager.#poiDataSource = await viewer.dataSources.add(new Cesium.CustomDataSource('poiDataSource'));
+	}
 
 	static getPOIType(poiId){
 		if (poiId && poiId.startsWith(POIManager.poiType.CUMBRE)){
@@ -26,32 +31,32 @@ export class POIManager{
 		MASA_DE_AGUA: Cesium.Color.fromBytes(69, 127, 176, 190),
 	});
 
-	static #getPOIEntity(viewer, poiId){
-		return viewer.entities.getById(poiId);
+	static #getPOIEntity(poiId){
+		return POIManager.#poiDataSource.entities.getById(poiId);
 	}
 
-	static poiIsLoaded(viewer, poiId){
-		const poiEntity = POIManager.#getPOIEntity(viewer, poiId);
+	static poiIsLoaded(poiId){
+		const poiEntity = POIManager.#getPOIEntity(poiId);
 		return poiEntity ? true : false;
 	}
 
-	static poiIsVisible(viewer, poiId) {
-		const poiEntity = POIManager.#getPOIEntity(viewer, poiId);
+	static poiIsVisible(poiId){
+		const poiEntity = POIManager.#getPOIEntity(poiId);
 		return poiEntity ? poiEntity.show : false;
 	}
 
-	static showPOI(viewer, poiId){
-		const poiEntity = POIManager.#getPOIEntity(viewer, poiId);
+	static showPOI(poiId){
+		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.show = true;
 	}
 
-	static hidePOI(viewer, poiId){
-		const poiEntity = POIManager.#getPOIEntity(viewer, poiId);
+	static hidePOI(poiId){
+		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.show = false;
 	}
 
-	static setPoiLabelProperties(viewer, poiId, labelText, removeScaleByDistance, visibilityDistance = null){
-		const poiEntity = POIManager.#getPOIEntity(viewer, poiId);
+	static setPoiLabelProperties(poiId, labelText, removeScaleByDistance, visibilityDistance = null){
+		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.label.text = labelText;
 
 		if (removeScaleByDistance){
@@ -81,8 +86,8 @@ export class POIManager{
 	}
 	*/
 
-	static addPOIsToViewer(viewer, poisList, renderingOptions){
-		viewer.entities.suspendEvents();
+	static addPOIsToViewer(poisList, renderingOptions){
+		POIManager.#poiDataSource.entities.suspendEvents();
 
 		for (const poi of poisList){
 			const poiType = POIManager.getPOIType(poi.id)
@@ -102,15 +107,15 @@ export class POIManager{
 				poiVisible = renderingOptions.masasDeAguaVisible;
 			}
 
-			POIManager.addPOIToViewer(viewer, poi.id, poi.name, poi.lat, poi.lon, renderingOptions.minVisibilityDistance, renderingOptions.maxVisibilityDistance, labelColor, poiVisible);
+			POIManager.addPOIToViewer(poi.id, poi.name, poi.lat, poi.lon, renderingOptions.minVisibilityDistance, renderingOptions.maxVisibilityDistance, labelColor, poiVisible);
 		}
 
-		viewer.entities.resumeEvents();
+		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static addPOIToViewer(viewer, poiId, poiName, poiLat, poiLon, minVisibilityDistance, maxVisibilityDistance, labelColor, visible){
+	static addPOIToViewer(poiId, poiName, poiLat, poiLon, minVisibilityDistance, maxVisibilityDistance, labelColor, visible){
 		try{
-			const entity = viewer.entities.add({
+			const entity = POIManager.#poiDataSource.entities.add({
 				id: poiId,
 				name: poiName,
 				description: POIManager.#getPOIDescription(poiLat, poiLon),
@@ -141,31 +146,27 @@ export class POIManager{
 		catch (err){}
 	}
 
-	static removePOIsFromViewer(viewer, poisList){
-		viewer.entities.suspendEvents();
-		poisList.forEach(poi => viewer.entities.removeById(poi.id));
-		viewer.entities.resumeEvents();
+	static removePOIsFromViewer(poisList){
+		POIManager.#poiDataSource.entities.suspendEvents();
+		poisList.forEach(poi => POIManager.#poiDataSource.entities.removeById(poi.id));
+		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static setPOIsVisibility(viewer, poiType, visible){
-		viewer.entities.suspendEvents();
+	static setPOIsVisibility(poiType, visible){
+		POIManager.#poiDataSource.entities.suspendEvents();
 
-		for (const poi of viewer.entities.values){
+		for (const poi of POIManager.#poiDataSource.entities.values){
 			if (poi.id.startsWith(poiType)){
 				poi.show = visible;
 			}
 		}
 
-		viewer.entities.resumeEvents();
+		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static setPOIsVisibilityRange(viewer, visibilityRangeMin, visibilityRangeMax){
+	static setPOIsVisibilityRange(visibilityRangeMin, visibilityRangeMax){
 		const distanceDisplayCondition = new Cesium.DistanceDisplayCondition(visibilityRangeMin, visibilityRangeMax);
-		viewer.entities.values.forEach(entity => {
-			if (entity.label){
-				entity.label.distanceDisplayCondition = distanceDisplayCondition;
-			}
-		});
+		POIManager.#poiDataSource.entities.values.forEach(entity => entity.label.distanceDisplayCondition = distanceDisplayCondition);
 	}
 
 	static #getPOIDescription(lat, lon){
