@@ -148,16 +148,24 @@ export class POIManager{
 	}
 
 	static setPOIsVisibility(viewer, poiType, visible){
+		viewer.entities.suspendEvents();
+
 		for (const poi of viewer.entities.values){
 			if (poi.id.startsWith(poiType)){
 				poi.show = visible;
 			}
 		}
+
+		viewer.entities.resumeEvents();
 	}
 
 	static setPOIsVisibilityRange(viewer, visibilityRangeMin, visibilityRangeMax){
 		const distanceDisplayCondition = new Cesium.DistanceDisplayCondition(visibilityRangeMin, visibilityRangeMax);
-		viewer.entities.values.forEach(entity => entity.label.distanceDisplayCondition = distanceDisplayCondition);
+		viewer.entities.values.forEach(entity => {
+			if (entity.label){
+				entity.label.distanceDisplayCondition = distanceDisplayCondition;
+			}
+		});
 	}
 
 	static #getPOIDescription(lat, lon){
