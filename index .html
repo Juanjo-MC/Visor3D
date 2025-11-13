@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+
+<html lang="es">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, height=device-height, interactive-widget=overlays-content, initial-scale=1" />
+		<title>Visor 3D</title>
+		<script src="https://cesium.com/downloads/cesiumjs/releases/1.132/Build/Cesium/Cesium.js"></script>
+		<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.132/Build/Cesium/Widgets/widgets.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+		<link rel="stylesheet" href="./css/globals.css">
+		<link rel="stylesheet" href="./css/controls.css">
+		<link rel="stylesheet" href="./css/viewer-container.css">
+		<link rel="stylesheet" href="./css/cesium-viewer-fullscreenContainer.css">
+		<link rel="stylesheet" href="./css/compass.css">
+		<link rel="stylesheet" href="./css/coordinates-container.css">
+		<link rel="stylesheet" href="./css/toolbar.css">
+		<link rel="stylesheet" href="./css/toast.css">
+		<style>
+
+			#menu {
+				position: absolute;
+				top: 7px;
+				left: 7px;
+				padding: 10px;
+				border-radius: 10px;
+				background: var(--color-menu-background-tr);
+				color: var(--color-white);
+				font: var(--font-standard);
+				user-select: none;
+			}
+
+			/* Buttons */
+
+/* 			button{
+				padding: 10px;
+				border: none;
+				border-radius: 4px;
+				background-color: var(--color-blue-tr);
+				color: var(--color-white);
+				font-size: 16px;
+				justify-content: center;
+				align-items: center;
+				cursor: pointer;
+			} */
+
+/* 			button:hover{
+				background-color: var(--color-blue-hover-tr);
+			} */
+
+			/* Textboxes */
+
+/*  			input[type="text"] {
+				width: 70%;
+				padding: 0 8px;
+				font-size: 14px;
+				border-radius: 4px;
+				background-color: transparent;
+				border: 1px solid var(--color-grey-tr);
+				height: 36px;
+				line-height: 36px;
+				color: var(--color-white);
+			}
+
+			input[type="text"]::placeholder {
+				color: var(--color-grey-tr);
+			}
+
+			input[type="text"]::selection {
+				background-color: var(--color-blue-tr);
+			} */
+			
+			.geocoder-textbox {
+				width: 70%;
+			}
+
+			.action-button-tracks {
+				width: 100%;
+			}
+
+			.search-button {
+				margin-left: 8px;
+				width: 20%;
+				/* height: 38px; */
+				 /* display: flex; */
+				box-sizing: border-box;
+				padding: 0;
+			}
+
+			.clear-button {
+				margin-left: 8px;
+				width: 20%;
+				/* height: 38px; */
+				/* display: flex; */
+				box-sizing: border-box;
+				padding: 0;
+			}
+
+			details summary.summary-no-arrow {
+				list-style-type: none;
+				cursor: pointer;
+				display: flex;
+			}
+
+			.burger-summary{
+				list-style: none;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+			}
+
+			.burger-menu {
+				font-size: 20px;
+			}
+
+			.burger-summary:hover .burger-menu {
+				color: var(--color-blue-tr);
+			}
+
+			details[open] summary .burger-menu {
+				transform: rotate(90deg);
+				transition: transform 0.3s ease;
+			}
+
+			.toggle-container-div {
+				display: flex;
+				justify-content: space-between;
+			}
+
+			/* Hide default HTML checkbox */
+			.switch input {
+				opacity: 0;
+				width: 0;
+				height: 0;
+			}
+
+			.switch {
+				position: relative;
+				width: 40px;
+				height: 18px;
+			}
+
+			.slider {
+				position: absolute;
+				cursor: pointer;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-color: var(--color-grey-tr);
+				transition: .4s;
+				border-radius: 20px;
+			}
+
+			.slider:before {
+                position: absolute;
+                content: "";
+                height: 14px;
+                width: 14px;
+                left: 2px;
+                bottom: 2px;
+                background-color: var(--color-white);
+                transition: .4s;
+                border-radius: 50%;
+            }
+
+            input:checked + .slider {
+                background-color: var(--color-blue-tr);
+            }
+
+            input:checked + .slider:before {
+                transform: translateX(21px);
+            }
+
+			#spinner {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 50px;
+				height: 50px;
+				margin: -25px 0 0 -25px;
+				border: 5px solid var(--color-grey-tr);
+				border-top: 5px solid var(--color-blue-tr);
+				border-radius: 50%;
+				animation: spin 1s linear infinite;
+				display: none;
+			}
+
+			@keyframes spin {
+				0% { transform: rotate(0deg); }
+				100% { transform: rotate(360deg); }
+			}
+
+			.range-container-div {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+			}
+
+			.rangeControl {
+				display: flex;
+				justify-content: flex-start;
+				align-items: center;
+				width: 100%;
+			}
+
+			.rangeControl label {
+				width: 50px;
+				text-align: left;
+			}
+
+			.rangeControl input {
+				width: 70%;
+				margin: 0 10px;
+			}
+
+			.rangeControl span {
+				width: 50px;
+				text-align: right;
+			}
+
+			.range {
+				-webkit-appearance: none;
+				height: 12px;
+				border-radius: 5px;
+				background: var(--color-blue-tr);
+				outline: none;
+			}
+
+			.range::-webkit-slider-thumb {
+				-webkit-appearance: none;
+				appearance: none;
+				width: 16px;
+				height: 16px;
+				border-radius: 50%;
+				background: var(--color-white);
+				cursor: pointer;
+			}
+
+			.range::-moz-range-thumb {
+				width: 16px;
+				height: 16px;
+				border-radius: 50%;
+				background: var(--color-white);
+				cursor: pointer;
+			}
+
+			.button-container {
+				margin-top: 10px;
+			}
+
+			.input-file {
+				display: block;
+				text-align: center;
+/* 				background-color: var(--color-blue-tr);
+				color: var(--color-white);
+				text-align: center;
+				border-radius: 4px;
+				padding: 10px;
+				cursor: pointer; */
+			}
+
+/* 			.input-file:hover {
+				background-color: var(--color-blue-hover-tr);
+			} */
+
+			.dropdown-container {
+				margin-top: 15px;
+			}
+
+			.dropdown-container label {
+				color: var(--color-white);
+				font-size: 14px;
+			}
+
+			.action-buttons {
+				margin-top: 20px; /* Space between the dropdown and the action buttons */
+				display: flex;
+				justify-content: space-between;
+			}
+
+			.action-buttons button {
+				width: 31%;
+				display: flex;
+				padding: 10px;
+			}
+
+			.menu-separator {
+				width: 100%;
+				height: 1px;
+				background: var(--color-grey-tr);
+				box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+				margin: 12px 0;
+			}
+
+			/* Search container with input and buttons */
+			.search-container {
+				display: flex;
+				align-items: center;
+				margin-top: 15px;
+				margin-bottom: 15px;
+			}
+
+			select:not([size]) {
+				background-color: transparent;
+				color: var(--color-white);
+				border: 1px solid var(--color-grey-tr);
+				border-radius: 4px;
+				padding: 8px;
+				font-size: 14px;
+				width: 100%;
+			}
+
+			select:not([size]) option {
+				background-color: var(--color-menu-background-tr);
+				color: var(--color-white);
+				padding: 8px;
+			}
+
+			select:not([size]) option:hover {
+				background-color: var(--color-blue-tr);
+				color: var(--color-white);
+			}
+
+			select:not([size]) option:checked {
+				background-color: var(--color-blue-tr);
+				color: var(--color-white);
+			}
+
+			select[size] {
+				display: none;
+				background-color: transparent;
+				color: var(--color-white);
+				border: 1px solid var(--color-grey-tr);
+				border-radius: 4px;
+				padding: 8px;
+				font-size: 14px;
+				width: 100%;
+			}
+
+			select[size] option {
+				background-color: transparent;
+				color: var(--color-white);
+				padding: 8px;
+			}
+
+			select[size] option:hover {
+				background-color: var(--color-blue-tr);
+				color: var(--color-white);
+			}
+
+			select[size] option:checked {
+				background-color: var(--color-blue-tr);
+				color: var(--color-white);
+			}
+
+			select[size]::-webkit-scrollbar {
+				width: 10px;
+			}
+
+			select[size]::-webkit-scrollbar-track {
+				background-color: transparent;
+			}
+
+			select[size]::-webkit-scrollbar-thumb {
+				background-color: var(--color-blue-tr);
+				border-radius: 4px;
+			}
+
+			.userPositionButton {
+				width: 32px;
+				height: 32px;
+				position: absolute;
+				top: 7px;
+				right: 122px;
+				border-radius: 4px;
+				border: 1px solid #444;
+				background-color: #303336;
+				color: var(--color-white);
+				justify-content: center;
+				align-items: center;
+				font: 20px sans-serif;
+				padding: 0;
+			}
+
+			.userPositionButton:hover {
+				background-color: var(--color-blue);
+				border-color: rgb(170, 238, 255);
+				box-shadow: 0 0 8px rgb(255, 255, 255);
+			}
+
+			.panoramaButton {
+				width: 32px;
+				height: 32px;
+				position: absolute;
+				top: 7px;
+				right: 160px;
+				border-radius: 4px;
+				border: 1px solid #444;
+				background-color: #303336;
+				color: var(--color-white);
+				justify-content: center;
+				align-items: center;
+				font: 20px sans-serif;
+				padding: 0;
+				display: none;
+			}
+
+			.panoramaButton:hover {
+				background-color: var(--color-blue);
+				border-color: rgb(170, 238, 255);
+				box-shadow: 0 0 8px rgb(255, 255, 255);
+			}
+
+		</style>
+	</head>
+	<body>
+	
+		<div id="viewerContainer" class="viewer-container"></div>
+		<div id="toastContainer"></div>
+
+		<button id="btnUserPosition" active="false" class="userPositionButton"><i class="fa-solid fa-crosshairs"></i></button>
+		<button id="btnPanorama" active="false" class="panoramaButton"><i class="fa-solid fa-panorama"></i></button>
+
+		<div class="compass">
+			<div class="compass-arrow"></div>
+			<div class="compass-circle"></div>
+		</div>
+
+		<div id="coordinatesContainer" class="coordinates-container"></div>
+
+		<div id="menu">
+			<details>
+				<summary class="burger-summary">
+					<span class="burger-menu">&#9776;</span>
+				</summary>
+				<div class="menu-separator"></div>
+				<details>
+					<summary class="summary-no-arrow">&nbsp;<i class="fas fa-map-pin">&nbsp;&nbsp;&nbsp;&nbsp;</i>Mostrar nombres de ...&nbsp;&nbsp;&nbsp;</summary>
+					<br>
+					<div class="toggle-container-div">
+						<label for="toggleCumbres">cumbres</label>
+						<label class="switch">
+							<input type="checkbox" id="toggleCumbres">
+							<span class="slider"></span>
+						</label>
+					</div>
+					<br>
+					<div class="toggle-container-div">
+						<label for="togglePoblaciones">poblaciones</label>
+						<label class="switch">
+							<input type="checkbox" id="togglePoblaciones">
+							<span class="slider"></span>
+						</label>
+					</div>
+					<br>
+					<div class="toggle-container-div">
+						<label for="toggleMasasDeAgua">masas de agua</label>
+						<label class="switch">
+							<input type="checkbox" id="toggleMasasDeAgua">
+							<span class="slider"></span>
+						</label>
+					</div>
+					<br>
+					<details>
+						<summary>&nbsp;&nbsp;&nbsp;a una distancia de ...&nbsp;&nbsp;&nbsp;</summary>
+						<br>
+						<div class="range-container-div">
+							<div class="rangeControl">
+								<label for="distanceFrom">entre</label>
+								<input type="range" class="range" id="distanceFrom" min="0" max="20" step="1" value="0">
+								<span id="distanceFromValue">0&nbsp;km</span>
+							</div>
+							<br>
+							<div class="rangeControl">
+								<label for="distanceTo">y</label>
+								<input type="range" class="range" id="distanceTo" min="0" max="20" step="1" value="20">
+								<span id="distanceToValue">20&nbsp;km</span>
+							</div>
+						</div>
+					</details>
+				</details>
+				<div class="menu-separator"></div>
+				<details>
+					<summary class="summary-no-arrow"><i class="fas fa-map-signs"></i>&nbsp;&nbsp;&nbsp;GPX, KML/KMZ, GeoJSON ...&nbsp;&nbsp;&nbsp;</summary>
+					<div class="button-container">
+						<label for="fileInput" class="button input-file"><i class="fa-solid fa-file-arrow-up"></i>&nbsp;&nbsp;&nbspSubir</label>
+						<input type="file" id="fileInput" style="display:none" accept=".gpx, .kml, .kmz, .json, .geojson">
+					</div>
+					<div class="dropdown-container">
+						<div>
+							<label for="ddlDataSources">Ficheros cargados</label>
+						</div>
+						<div>
+							<select id="ddlDataSources"></select>
+						</div>
+					</div>
+					<div class="action-buttons">
+						<button id="btnShow" class="button  action-button-tracks"><i class="fa-solid fa-eye"></i></button>
+						<button id="btnHide" class="button action-button-tracks"><i class="fa-solid fa-eye-slash"></i></button>
+						<button id="btnDelete" class="button action-button-tracks"><i class="fa-solid fa-trash"></i></button>
+					</div>
+				</details>
+				<div class="menu-separator"></div>
+				<details>
+					<summary class="summary-no-arrow"><i class="fas fa-map-marked-alt"></i>&nbsp;&nbsp;&nbsp;Buscar ...&nbsp;&nbsp;&nbsp;</summary>
+					<div class="search-container">
+						<input type="text" id="searchBox" class="textbox geocoder-textbox" autocomplete="off" placeholder="Topónimo, dirección, ...">
+						<button id="btnSearch" class="button search-button"><i class="fa-solid fa-magnifying-glass"></i></button>
+						<button id="btnClearSearch" class="button clear-button"><i class="fa-solid fa-trash"></i></button>
+					</div>
+					<div class="dropdown-container">
+						<select id="searchResultsList" size="3"></select>
+					</div>
+				</details>
+			</details>
+		</div>
+
+		<div id="spinner"></div>
+
+		<script type="module">
+			import {Application} from './script/Application.js';
+			Cesium.Ion.defaultAccessToken = null;
+			await Application.initialize();
+		</script>
+	</body>
+</html>
