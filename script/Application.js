@@ -34,6 +34,12 @@ export class Application{
 		EXTERNAL_DATA_WAYPOINTS: './images/pin_red.svg',
 	});
 
+	static #toastType = Object.freeze({
+		INFO: 'info',
+		WARNING: 'warning',
+		ERROR: 'error',
+	});
+
 	static #latestLoadedPOIsCameraPosition = {};	// Latest position where POIs were loaded {lat, lon}
 	static #cameraHeading = null;					// Current camera heading
 	static #geocoderMarkerId = null;				// Entity Id of geocoder pin
@@ -42,6 +48,7 @@ export class Application{
 	//DOM elements
 	static #domElement = Object.freeze({
 		viewerContainer: document.getElementById('viewerContainer'),
+		toastContainer: document.getElementById('toastContainer'),
 		coordinatesContainer: document.getElementById('coordinatesContainer'),
 		compass: document.querySelector('.compass-circle'),
 		toggleCumbres: document.getElementById('toggleCumbres'),
@@ -76,7 +83,7 @@ export class Application{
 			await Application.#prepareScene();
 		}
 		catch(err){
-			window.alert(err.message);
+			Application.#showToast('Se ha producido un error al inicializar la aplicación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
 
@@ -181,6 +188,41 @@ export class Application{
 
 		POIManager.addPOIsToViewer(pois, renderingOptions);
 		ViewerService.flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch);
+	}
+
+	static #showToast(message, type = Application.#toastType.INFO, duration = 5000) {
+		const container = Application.#domElement.toastContainer;
+		let iconClass;
+
+		switch (type) {
+			case Application.#toastType.WARNING:
+            iconClass = 'fa-solid fa-triangle-exclamation';
+            break;
+        case Application.#toastType.ERROR:
+            iconClass = 'fa-solid fa-xmark';
+            break;
+        case Application.#toastType.INFO:
+        default:
+			iconClass = 'fa-solid fa-circle-info';
+		}
+
+		const toast = document.createElement('div');
+		toast.classList.add('toast', type);
+		toast.innerHTML = '<i class="toast-icon ' + iconClass + '"></i>' + message;
+		container.appendChild(toast);
+
+		setTimeout(() => {
+			toast.classList.add('show');
+		}, 10);
+
+		setTimeout(() => {
+			toast.classList.remove('show');
+			toast.classList.add('hide');
+
+			setTimeout(() => {
+				container.removeChild(toast);
+			}, 500);
+		}, duration);
 	}
 
 	// Event listeners
@@ -401,7 +443,7 @@ export class Application{
 						dataSourceInfo = await ExternalDataService.addGeoJsonDataSource(ViewerService.viewer, {data: jsonData, fileName: file.name}, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					default:
-						window.alert('Tipo de fichero no soportado: ' + fileExtension);
+						Application.#showToast('Tipo de fichero no soportado: ' + fileExtension, Application.#toastType.WARNING);
 						return;
 				}
 
@@ -410,7 +452,8 @@ export class Application{
 				ViewerService.flyToDataSource(ExternalDataService.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId));
 			}
 			catch (err){
-				window.alert('Error al procesar el fichero ' + file.name + ': ' + err.message);
+				console.error('Error processing the file ' + file.name + ': ' + err.message);
+				Application.#showToast('Error al procesar el fichero ' + file.name + ': ' + err.message, Application.#toastType.ERROR);
 			}
 			finally{
 				this.value = null;
@@ -461,28 +504,35 @@ export class Application{
 	}
 
 	static async #onBtnSearchClick(){
-		const searchBox = Application.#domElement.searchBox;
-		const searchResultsList = Application.#domElement.searchResultsList;
+		try{
+			const searchBox = Application.#domElement.searchBox;
+			const searchResultsList = Application.#domElement.searchResultsList;
 
-		if (searchBox.value.trim()){
-			searchResultsList.selectedIndex = -1;
-			searchResultsList.options.length = 0;
-			const searchResults = await GeocodingService.getCandidates(searchBox.value.trim());
+			if (searchBox.value.trim()){
+				searchResultsList.selectedIndex = -1;
+				searchResultsList.options.length = 0;
+				const searchResults = await GeocodingService.getCandidates(searchBox.value.trim());
 
-			if (searchResults.length === 0){
-				window.alert('No se han encontrado resultados');
-				searchBox.value = '';
-			}
-			else{
-				for (const result of searchResults){
-					const option = new Option(result.address, result.id);
-					option.setAttribute('type', result.type);
-					searchResultsList.add(option);
+				if (searchResults.length === 0){
+					Application.#showToast('No se han encontrado resultados', Application.#toastType.INFO);
+
+					searchBox.value = '';
 				}
+				else{
+					for (const result of searchResults){
+						const option = new Option(result.address, result.id);
+						option.setAttribute('type', result.type);
+						searchResultsList.add(option);
+					}
 
-			searchResultsList.style.display = 'block';
+				searchResultsList.style.display = 'block';
 
+				}
 			}
+		}
+		catch(err){
+			console.error('Geododer error: ' + err.message);
+			Application.#showToast('Error en el geocodificador: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
 
@@ -520,15 +570,15 @@ export class Application{
 				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
 				Application.#domElement.btnUserPosition.setAttribute('active', 'true');
 				Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
-				window.alert('Geolocation started');
+				Application.#showToast('Geolocalización activada', Application.#toastType.INFO);
 			}
 			else{
 				Application.#stopGeolocation();
-				window.alert('Geolocation started');
+				Application.#showToast('Geolocalización desactivada', Application.#toastType.INFO);
 			}
 		}
 		catch (err){
-			window.alert('Se ha producido un error al activar la geolocalización: ' + err.message)
+			Application.#processGeolocationError(err);
 		}
 	}
 
@@ -567,8 +617,8 @@ export class Application{
 	}
 
 	static #processGeolocationError(error){
-		console.log('Geolocation error: ' + error.message);
-		window.alert('Se ha producido un error en la geolocalización: ' + error.message);
+		console.error('Geolocation error: ' + error.message);
+		Application.#showToast('Se ha producido un error en la geolocalización: ' + error.message, Application.#toastType.ERROR);
 		Application.#stopGeolocation();
 	}
 
@@ -593,18 +643,19 @@ export class Application{
 				if (headingTrackerStarted){
 					Application.#domElement.btnPanorama.setAttribute('active', 'true');
 					Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
-					window.alert('Sensor started');
+					Application.#showToast('Sensor de orientación activado', Application.#toastType.INFO);
 				}
 			}
 			else{
 				DeviceHeadingTracker.stop();
 				Application.#domElement.btnPanorama.setAttribute('active', 'false');
 				Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
-				window.alert('sensor stopped');
+				Application.#showToast('Sensor de orientación desactivado', Application.#toastType.INFO);
 			}
 		}
 		catch (err){
-			window.alert('Se ha producido un error al activar el sensor: ' + err.message)
+			console.error('Orientation sensor error: ' + error.message);
+			Application.#showToast('Se ha producido un error en el sensor de orientación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
 }

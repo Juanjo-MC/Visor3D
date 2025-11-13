@@ -20,7 +20,7 @@ export class GeocodingService{
 	static #getFullAddress(geocoderResult){
 		const numeroPortal = geocoderResult.portalNumber !== null ? geocoderResult.portalNumber : '';
 		const extension = geocoderResult.extension !== null ? geocoderResult.extension : '';
-		return (geocoderResult.address + ' ' +  numeroPortal + ' ' + extension).trim();
+		return (geocoderResult.address + ' ' + numeroPortal + ' ' + extension).trim();
 	}
 
 	static getHtml(geocoderResult, altitude){
@@ -57,20 +57,20 @@ export class GeocodingService{
 
 		return html;
 	}
-	
+
 	static async #getJSONData(url){
 		try{
 			const response = await fetch(url);
-			
+
 			if (!response.ok){
 				throw new Error('Response status: ' + response.status);
 			}
-			
+
 			const json = await response.json();
 			return json;
 		}
 		catch (err){
-			console.log(err.message);
+			throw err;
 		}
 	}
 }

@@ -143,7 +143,9 @@ export class POIManager{
 				entity.label.scale = 1.2;
 			}
 		}
-		catch (err){}
+		catch (err){
+			console.warn('Error adding POI id ' + poiId + ': ' + err.message);
+		}
 	}
 
 	static removePOIsFromViewer(poisList){

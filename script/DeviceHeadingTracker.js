@@ -34,8 +34,7 @@ export class DeviceHeadingTracker{
 		}
 		catch (err){
 			DeviceHeadingTracker.#previousHeading = null;
-			window.alert(err.message);
-			return false;
+			throw err;
 		}
 	}
 
@@ -69,7 +68,6 @@ export class DeviceHeadingTracker{
 			}
 		}
 		catch (err){
-			console.warn('Permiso denegado o no disponible:', err);
 			throw err;
 		}
 	}
@@ -95,7 +93,6 @@ export class DeviceHeadingTracker{
 			DeviceHeadingTracker.#orientationSensor.start();
 		}
 		catch (error){
-			console.error('Error al iniciar AbsoluteOrientationSensor:', error);
 			throw err;
 		}
 	}

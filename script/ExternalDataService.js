@@ -77,7 +77,7 @@ export class ExternalDataService{
 		billboard.disableDepthTestDistance = 0;
 		billboard.scaleByDistance = new Cesium.NearFarScalar(100, 1.5, 20000, 0.4);
 		billboard.pixelOffset = new Cesium.Cartesian2(0, -5);
-		billboard.verticalOrigin =  Cesium.VerticalOrigin.BOTTOM;
+		billboard.verticalOrigin = Cesium.VerticalOrigin.BOTTOM;
 		billboard.heightReference = Cesium.HeightReference.CLAMP_TO_GROUND;
 		billboard.image = markerFilePath;
 	}
