@@ -8,7 +8,7 @@ export class DeviceHeadingTracker{
 	static async start(onHeadingChange, cameraHeading){
 		try{
 			if (location.protocol !== 'https:'){
-				throw new Error('Esta función requiere HTTPS');
+				throw new Error('This functionality requires HTTPS');
 			}
 
 			DeviceHeadingTracker.#onHeadingChange = onHeadingChange;
@@ -26,7 +26,7 @@ export class DeviceHeadingTracker{
 				return true;
 			}
 			else{
-				throw new Error('Sensores de orientación no soportados en este dispositivo.');
+				throw new Error('Orientation sensor not supported on this device');
 			}
 		}
 		catch (err){
@@ -47,56 +47,36 @@ export class DeviceHeadingTracker{
 	}
 
 	static async #requestPermissions(){
-		try{
-/* 			if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission){
-				const motionPermission = await DeviceMotionEvent.requestPermission();
+		if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission){
+			const orientationPermission = await DeviceOrientationEvent.requestPermission();
 
-				if (motionPermission !== 'granted'){
-					throw new Error('Permiso de moción denegado');
-				}
-			} */
-
-			if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission){
-				const orientationPermission = await DeviceOrientationEvent.requestPermission();
-
-				if (orientationPermission !== 'granted'){
-					throw new Error('Permiso de orientación denegado');
-				}
+			if (orientationPermission !== 'granted'){
+				throw new Error('Orientation sensor permission denied');
 			}
-		}
-		catch (err){
-			throw err;
 		}
 	}
 
 	static #startAbsoluteOrientationSensor(){
-		try{
-			DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
+		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
 
-			DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
-				const q = DeviceHeadingTracker.#orientationSensor.quaternion;
+		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
+			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
 
-				if (!q){
-					return;
-				}
+			if (!q){
+				return;
+			}
 
-				const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
-				let heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
-				heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
-				const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
-				DeviceHeadingTracker.#onHeadingChange(filteredHeading);
-			});
+			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
+			let heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
+			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
+			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
+			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
+		});
 
-			DeviceHeadingTracker.#orientationSensor.start();
-		}
-		catch (err){
-			throw err;
-		}
+		DeviceHeadingTracker.#orientationSensor.start();
 	}
 
 	static #startDeviceOrientationFallback(){
-		// Bind the event handler once
-		//DeviceHeadingTracker.#handleOrientationEvent = DeviceHeadingTracker.#handleOrientationEvent.bind(DeviceHeadingTracker);
 		window.addEventListener('deviceorientationabsolute', DeviceHeadingTracker.#handleOrientationEvent, true);
 		window.addEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent, true);
 	}
