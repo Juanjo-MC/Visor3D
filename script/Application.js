@@ -196,13 +196,13 @@ export class Application{
 
 		switch (type) {
 			case Application.#toastType.WARNING:
-            iconClass = 'fa-solid fa-triangle-exclamation';
-            break;
-        case Application.#toastType.ERROR:
-            iconClass = 'fa-solid fa-xmark';
-            break;
-        case Application.#toastType.INFO:
-        default:
+			iconClass = 'fa-solid fa-triangle-exclamation';
+			break;
+		case Application.#toastType.ERROR:
+			iconClass = 'fa-solid fa-xmark';
+			break;
+		case Application.#toastType.INFO:
+		default:
 			iconClass = 'fa-solid fa-circle-info';
 		}
 
@@ -515,7 +515,6 @@ export class Application{
 
 				if (searchResults.length === 0){
 					Application.#showToast('No se han encontrado resultados', Application.#toastType.INFO);
-
 					searchBox.value = '';
 				}
 				else{
@@ -562,10 +561,13 @@ export class Application{
 
 	// Geolocation
 	static #onBtnUserPositionClick(){
-		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
-		navigator.vibrate(100);
-
 		try{
+			const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
+
+			if ('vibrate' in navigator){
+				navigator.vibrate(100);
+			}
+
 			if (geolocationActive === 'false'){
 				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
 				Application.#domElement.btnUserPosition.setAttribute('active', 'true');
@@ -633,10 +635,13 @@ export class Application{
 
 	// Panorama
 	static async #onBtnPanoramaClick(){
-		const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
-		navigator.vibrate(100);
-
 		try{
+			const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
+
+			if ('vibrate' in navigator){
+				navigator.vibrate(100);
+			}
+
 			if (headingTrackingActive === 'false'){
 				const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
 
