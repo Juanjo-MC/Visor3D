@@ -8,8 +8,7 @@ export class DeviceHeadingTracker{
 	static async start(onHeadingChange, cameraHeading){
 		try{
 			if (location.protocol !== 'https:'){
-				window.alert('Esta función requiere HTTPS');
-				return false;
+				throw new Error('Esta función requiere HTTPS');
 			}
 
 			DeviceHeadingTracker.#onHeadingChange = onHeadingChange;
@@ -27,9 +26,7 @@ export class DeviceHeadingTracker{
 				return true;
 			}
 			else{
-				window.alert('Sensores de orientación no soportados en este dispositivo.');
-				DeviceHeadingTracker.#previousHeading = null;
-				return false;
+				throw new Error('Sensores de orientación no soportados en este dispositivo.');
 			}
 		}
 		catch (err){

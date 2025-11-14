@@ -562,11 +562,11 @@ export class Application{
 	// Geolocation
 	static #onBtnUserPositionClick(){
 		try{
-			const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
-
 			if ('vibrate' in navigator){
 				navigator.vibrate(100);
 			}
+
+			const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
 
 			if (geolocationActive === 'false'){
 				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
@@ -636,11 +636,11 @@ export class Application{
 	// Panorama
 	static async #onBtnPanoramaClick(){
 		try{
-			const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
-
 			if ('vibrate' in navigator){
 				navigator.vibrate(100);
 			}
+
+			const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
 
 			if (headingTrackingActive === 'false'){
 				const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
@@ -649,6 +649,9 @@ export class Application{
 					Application.#domElement.btnPanorama.setAttribute('active', 'true');
 					Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
 					Application.#showToast('Sensor de orientación activado', Application.#toastType.INFO);
+				}
+				else{
+					Application.#showToast('No se ha podido activar el sensor de orientación', Application.#toastType.WARNING);
 				}
 			}
 			else{
