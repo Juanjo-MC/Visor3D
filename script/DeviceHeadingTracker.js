@@ -52,7 +52,7 @@ export class DeviceHeadingTracker{
 				const motionPermission = await DeviceMotionEvent.requestPermission();
 
 				if (motionPermission !== 'granted'){
-					throw new Error('Permiso de Moción denegado');
+					throw new Error('Permiso de moción denegado');
 				}
 			} */
 
@@ -60,7 +60,7 @@ export class DeviceHeadingTracker{
 				const orientationPermission = await DeviceOrientationEvent.requestPermission();
 
 				if (orientationPermission !== 'granted'){
-					throw new Error('Permiso de Orientación denegado');
+					throw new Error('Permiso de orientación denegado');
 				}
 			}
 		}
@@ -96,7 +96,7 @@ export class DeviceHeadingTracker{
 
 	static #startDeviceOrientationFallback(){
 		// Bind the event handler once
-		DeviceHeadingTracker.#handleOrientationEvent = DeviceHeadingTracker.#handleOrientationEvent.bind(DeviceHeadingTracker);
+		//DeviceHeadingTracker.#handleOrientationEvent = DeviceHeadingTracker.#handleOrientationEvent.bind(DeviceHeadingTracker);
 		window.addEventListener('deviceorientationabsolute', DeviceHeadingTracker.#handleOrientationEvent, true);
 		window.addEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent, true);
 	}
