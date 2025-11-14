@@ -48,13 +48,13 @@ export class DeviceHeadingTracker{
 
 	static async #requestPermissions(){
 		try{
-			if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission){
+/* 			if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission){
 				const motionPermission = await DeviceMotionEvent.requestPermission();
 
 				if (motionPermission !== 'granted'){
 					throw new Error('Permiso de Moción denegado');
 				}
-			}
+			} */
 
 			if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission){
 				const orientationPermission = await DeviceOrientationEvent.requestPermission();
@@ -89,7 +89,7 @@ export class DeviceHeadingTracker{
 
 			DeviceHeadingTracker.#orientationSensor.start();
 		}
-		catch (error){
+		catch (err){
 			throw err;
 		}
 	}
