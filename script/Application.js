@@ -662,7 +662,7 @@ export class Application{
 			}
 		}
 		catch (err){
-			console.error('Orientation sensor error: ' + error.message);
+			console.error('Orientation sensor error: ' + err.message);
 			Application.#showToast('Se ha producido un error en el sensor de orientación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}

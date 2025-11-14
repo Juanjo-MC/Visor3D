@@ -42,7 +42,7 @@ export class DeviceHeadingTracker{
 		}
 
 		window.removeEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent);
-		window.removeEventListener('deviceorientationabsolute',DeviceHeadingTracker.#handleOrientationEvent);
+		//window.removeEventListener('deviceorientationabsolute', DeviceHeadingTracker.#handleOrientationEvent);
 		DeviceHeadingTracker.#previousHeading = null;
 	}
 
@@ -77,7 +77,7 @@ export class DeviceHeadingTracker{
 	}
 
 	static #startDeviceOrientationFallback(){
-		window.addEventListener('deviceorientationabsolute', DeviceHeadingTracker.#handleOrientationEvent, true);
+		//window.addEventListener('deviceorientationabsolute', DeviceHeadingTracker.#handleOrientationEvent, true);
 		window.addEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent, true);
 	}
 
