@@ -128,7 +128,14 @@ export class Application{
 
 	static async #prepareScene(){
 		// Restore last used cartography
-		const lastCartography = localStorage.getItem('lastCartography');
+		let lastCartography;
+		
+		try{
+			lastCartography = window.localStorage.getItem('lastCartography');
+		}
+		catch (err){
+			console.error(err.message);
+		}
 
 		if (lastCartography){
 			ViewerService.setImagery(lastCartography);
@@ -154,7 +161,14 @@ export class Application{
 		}
 		else{
 			// check for saved camera position
-			const jsonSavedCameraPosition = localStorage.getItem('lastCameraPosition');
+			let jsonSavedCameraPosition;
+			
+			try{
+				jsonSavedCameraPosition = window.localStorage.getItem('lastCameraPosition');
+			}
+			catch (err){
+				console.error(err.message);
+			}
 
 			if (jsonSavedCameraPosition){
 				const savedCameraPosition = JSON.parse(jsonSavedCameraPosition);
@@ -355,8 +369,13 @@ export class Application{
 
 	static #onDocumentVisibilityChange(){
 		if (document.hidden){
-			localStorage.setItem('lastCameraPosition', JSON.stringify(ViewerService.getCameraPosition()));
-			localStorage.setItem('lastCartography', ViewerService.currentImageryName);
+			try{
+				window.localStorage.setItem('lastCameraPosition', JSON.stringify(ViewerService.getCameraPosition()));
+				window.localStorage.setItem('lastCartography', ViewerService.currentImageryName);
+			}
+			catch (err){
+				console.error(err.message);
+			}
 		}
 	}
 
