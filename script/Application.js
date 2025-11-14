@@ -44,6 +44,7 @@ export class Application{
 	static #cameraHeading = null;					// Current camera heading
 	static #geocoderMarkerId = null;				// Entity Id of geocoder pin
 	static #geolocationMarkerId = null;				// Entity Id of geolocation position pin
+	static #isGeolocationStopping = false;			//
 
 	//DOM elements
 	static #domElement = Object.freeze({
@@ -126,10 +127,10 @@ export class Application{
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 	}
 
-	static async #prepareScene(){
+	static async #prepareScene(){  // TO DO: refactor. This function is not easy to follow, it should probably be splitted on smaller logical chunks
 		// Restore last used cartography
 		let lastCartography;
-		
+
 		try{
 			lastCartography = window.localStorage.getItem('lastCartography');
 		}
@@ -162,7 +163,7 @@ export class Application{
 		else{
 			// check for saved camera position
 			let jsonSavedCameraPosition;
-			
+
 			try{
 				jsonSavedCameraPosition = window.localStorage.getItem('lastCameraPosition');
 			}
@@ -610,11 +611,21 @@ export class Application{
 			const entityId = MarkersManager.createMarker(position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
 			MarkersManager.addCircleToMarker(entityId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
 			Application.#geolocationMarkerId = entityId;
-			ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
+
+			if (!Application.#isGeolocationStopping){
+				ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
+			}
 		}
 		else{
 			MarkersManager.updateMarker(Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
 			MarkersManager.updateMarkerCircle(Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
+			ViewerService.refreshScene();
+		}
+
+		if (Application.#isGeolocationStopping){
+			MarkersManager.removeMarker(Application.#geolocationMarkerId);
+			Application.#geolocationMarkerId = null;
+			Application.#isGeolocationStopping = false;
 			ViewerService.refreshScene();
 		}
 	}
@@ -645,11 +656,17 @@ export class Application{
 
 	static #stopGeolocation(){
 		GeolocationService.stopTrackingPosition();
-		MarkersManager.removeMarker(Application.#geolocationMarkerId);
+		Application.#isGeolocationStopping = true;
 		Application.#domElement.btnUserPosition.setAttribute('active', 'false');
 		Application.#domElement.btnUserPosition.style.color = 'rgb(237, 255, 255)';
+
+		if(Application.#geolocationMarkerId){
+			MarkersManager.removeMarker(Application.#geolocationMarkerId);
+			Application.#geolocationMarkerId = null;
+			Application.#isGeolocationStopping = false;
+		}
+
 		ViewerService.refreshScene();
-		Application.#geolocationMarkerId = null;
 	}
 
 	// Panorama
