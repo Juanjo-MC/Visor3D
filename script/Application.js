@@ -84,7 +84,7 @@ export class Application{
 			await Application.#prepareScene();
 		}
 		catch(err){
-			console.error('Error during initialisation: ' + err)
+			console.error('Error during initialisation: ' + err);
 			Application.#showToast('Se ha producido un error al inicializar la aplicación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
@@ -129,7 +129,7 @@ export class Application{
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 	}
 
-	static async #prepareScene(){  // TO DO: refactor. This function is dificult to follow, it should probably be splitted on smaller logical chunks
+	static async #prepareScene(){ // TO DO: refactor. This function is dificult to follow, it should probably be splitted on smaller logical chunks
 		// Restore last used cartography
 		let lastCartography;
 
@@ -207,20 +207,20 @@ export class Application{
 		ViewerService.flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch);
 	}
 
-	static #showToast(message, type = Application.#toastType.INFO, duration = 5000) {
+	static #showToast(message, type = Application.#toastType.INFO, duration = 5000){
 		const container = Application.#domElement.toastContainer;
 		let iconClass;
 
-		switch (type) {
+		switch (type){
 			case Application.#toastType.WARNING:
-			iconClass = 'fa-solid fa-triangle-exclamation';
-			break;
-		case Application.#toastType.ERROR:
-			iconClass = 'fa-solid fa-xmark';
-			break;
-		case Application.#toastType.INFO:
-		default:
-			iconClass = 'fa-solid fa-circle-info';
+				iconClass = 'fa-solid fa-triangle-exclamation';
+				break;
+			case Application.#toastType.ERROR:
+				iconClass = 'fa-solid fa-xmark';
+				break;
+			case Application.#toastType.INFO:
+			default:
+				iconClass = 'fa-solid fa-circle-info';
 		}
 
 		const toast = document.createElement('div');
@@ -255,7 +255,7 @@ export class Application{
 		}
 	}
 
-	static async #onCameraStopMove(){
+	static #onCameraStopMove(){
 		const cameraPosition = ViewerService.getCameraPosition();
 		const lat = cameraPosition.lat;
 		const lon = cameraPosition.lon;
@@ -268,14 +268,14 @@ export class Application{
 			const poisInNewBbox = POIFinder.findPOIsAround(Application.#latestLoadedPOIsCameraPosition.lat, Application.#latestLoadedPOIsCameraPosition.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
 			const poisToRemove = Utils.arrayDifference(poisInOldBbox, poisInNewBbox);
 			const poisToAdd = Utils.arrayDifference(poisInNewBbox, poisInOldBbox);
-			const visibilityDistance = Application.#getPOIsVisibilityRange();
+			const visibilityRange = Application.#getPOIsVisibilityRange();
 
 			const renderingOptions = {
 				cumbresVisible: Application.#domElement.toggleCumbres.checked,
 				poblacionesVisible: Application.#domElement.togglePoblaciones.checked,
 				masasDeAguaVisible: Application.#domElement.toggleMasasDeAgua.checked,
-				minVisibilityDistance: visibilityDistance.min,
-				maxVisibilityDistance: visibilityDistance.max,
+				minVisibilityDistance: visibilityRange.min,
+				maxVisibilityDistance: visibilityRange.max,
 			}
 
 			POIManager.removePOIsFromViewer(poisToRemove);
@@ -312,7 +312,7 @@ export class Application{
 					POIManager.showPOI(poi.id);
 					ViewerService.refreshScene();
 
-					setTimeout(function(){
+					setTimeout(() => {
 						const poiType = POIManager.getPOIType(poi.id);
 						const toggleCumbres = Application.#domElement.toggleCumbres;
 						const togglePoblaciones = Application.#domElement.togglePoblaciones;
@@ -329,8 +329,8 @@ export class Application{
 							showPOI = toggleMasasDeAgua.checked;
 						}
 
-						const visibilityDistance = Application.#getPOIsVisibilityRange();
-						POIManager.setPoiLabelProperties(poi.id, poi.name, false, visibilityDistance);
+						const visibilityRange = Application.#getPOIsVisibilityRange();
+						POIManager.setPoiLabelProperties(poi.id, poi.name, false, visibilityRange);
 
 						if (!showPOI){
 							POIManager.hidePOI(poi.id);
@@ -349,7 +349,7 @@ export class Application{
 		const isObject = ViewerService.isCursorOverObject(mousePosition);
 		let lat = '----';
 		let lon = '----';
-		let altitude;
+		let altitude = '----';
 
 			if (position && !isObject){
 				lat = position.lat.toFixed(6);
@@ -359,12 +359,6 @@ export class Application{
 				if (altitude){
 					altitude = altitude.toFixed(0);
 				}
-				else{
-					altitude = '----';
-				}
-			}
-			else{
-				altitude = '----';
 			}
 
 		Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;' + lat + '&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;' + lon + '&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;' + altitude + '<span>';
@@ -433,15 +427,18 @@ export class Application{
 	}
 
 	static #getPOIsVisibilityRange(){
-		let minVisibilityDistance = Math.min(Application.#domElement.minVisibilityDistanceControl.value, Application.#domElement.maxVisibilityDistanceControl.value) * 1000;
-		const maxVisibilityDistance = Math.max(Application.#domElement.minVisibilityDistanceControl.value, Application.#domElement.maxVisibilityDistanceControl.value) * 1000;
-		minVisibilityDistance < 10 ? minVisibilityDistance = 10 : minVisibilityDistance;
-		return {min: minVisibilityDistance, max: maxVisibilityDistance};
+		const a = +Application.#domElement.minVisibilityDistanceControl.value;
+		const b = +Application.#domElement.maxVisibilityDistanceControl.value;
+
+		return {
+			min: Math.max(Math.min(a, b) * 1000, 10),
+			max: Math.max(a, b) * 1000
+		};
 	}
 
 	static #setPOIsVisibilityRange(){
-		const visibilityDistance = Application.#getPOIsVisibilityRange();
-		POIManager.setPOIsVisibilityRange(visibilityDistance.min, visibilityDistance.max);
+		const visibilityRange = Application.#getPOIsVisibilityRange();
+		POIManager.setPOIsVisibilityRange(visibilityRange.min, visibilityRange.max);
 		ViewerService.refreshScene();
 	}
 
@@ -638,7 +635,7 @@ export class Application{
 
 	static async #getUserPositionDescription(position){
 		const altitudeMDT05 = await ViewerService.getElevation(position.coords.latitude, position.coords.longitude);
-		let html = '<a href="geo:' + position.coords.latitude.toFixed(6) + ',' + position.coords.latitude.toFixed(6) + '">' + '<strong>Latitud</strong>: ' + position.coords.latitude.toFixed(6) + '</a><br><br>';
+		let html = '<a href="geo:' + position.coords.latitude.toFixed(6) + ',' + position.coords.longitude.toFixed(6) + '">' + '<strong>Latitud</strong>: ' + position.coords.latitude.toFixed(6) + '</a><br><br>';
 		html += '<a href="geo:' + position.coords.latitude.toFixed(6) + ',' + position.coords.longitude.toFixed(6) + '">' + '<strong>Longitud</strong>: ' + position.coords.longitude.toFixed(6) + '</a><br><br>';
 		html += '<strong>Precisión (m)</strong>: ' + position.coords.accuracy.toFixed(0) + '<br><br>';
 
