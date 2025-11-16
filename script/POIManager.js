@@ -7,6 +7,12 @@ export class POIManager{
 		MASA_DE_AGUA: 'A:',
 	});
 
+	static #poiLabelColor = Object.freeze({
+		CUMBRE: Cesium.Color.fromBytes(218, 218, 255, 190),
+		POBLACION: Cesium.Color.fromBytes(253, 246, 228, 190),
+		MASA_DE_AGUA: Cesium.Color.fromBytes(69, 127, 176, 190),
+	});
+
 	static async initialize(viewer){
 		POIManager.#poiDataSource = await viewer.dataSources.add(new Cesium.CustomDataSource('poiDataSource'));
 	}
@@ -24,12 +30,6 @@ export class POIManager{
 
 		return null;
 	}
-
-	static #poiLabelColor = Object.freeze({
-		CUMBRE: Cesium.Color.fromBytes(218, 218, 255, 190),
-		POBLACION: Cesium.Color.fromBytes(253, 246, 228, 190),
-		MASA_DE_AGUA: Cesium.Color.fromBytes(69, 127, 176, 190),
-	});
 
 	static #getPOIEntity(poiId){
 		return POIManager.#poiDataSource.entities.getById(poiId);
@@ -72,8 +72,6 @@ export class POIManager{
 		else{
 			poiEntity.label.distanceDisplayCondition = new Cesium.DistanceDisplayCondition(visibilityDistance.min, visibilityDistance.max);
 		}
-
-
 	}
 
 	/* Rendering options
@@ -144,7 +142,7 @@ export class POIManager{
 			}
 		}
 		catch (err){
-			console.warn('Error adding POI id ' + poiId + ': ' + err.message);
+			console.warn('Error adding POI ' + poiId + ': ' + err);
 		}
 	}
 

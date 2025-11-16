@@ -44,7 +44,7 @@ export class Application{
 	static #cameraHeading = null;					// Current camera heading
 	static #geocoderMarkerId = null;				// Entity Id of geocoder pin
 	static #geolocationMarkerId = null;				// Entity Id of geolocation position pin
-	static #isGeolocationStopping = false;			//
+	static #isGeolocationStopping = false;			// Prevents a race condition when stopping geolocation before the first position update
 
 	//DOM elements
 	static #domElement = Object.freeze({
@@ -84,6 +84,7 @@ export class Application{
 			await Application.#prepareScene();
 		}
 		catch(err){
+			console.error('Error during initialisation: ' + err)
 			Application.#showToast('Se ha producido un error al inicializar la aplicación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
@@ -107,6 +108,7 @@ export class Application{
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
 		}
 
+		ViewerService.onSelectedImageryChange(Application.#onSelectedImageryChange);
 		document.addEventListener('visibilitychange', Application.#onDocumentVisibilityChange);
 		Application.#domElement.toggleCumbres.addEventListener('change', Application.#onCumbresToggleChange);
 		Application.#domElement.togglePoblaciones.addEventListener('change', Application.#onPoblacionesToggleChange);
@@ -127,7 +129,7 @@ export class Application{
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 	}
 
-	static async #prepareScene(){  // TO DO: refactor. This function is not easy to follow, it should probably be splitted on smaller logical chunks
+	static async #prepareScene(){  // TO DO: refactor. This function is dificult to follow, it should probably be splitted on smaller logical chunks
 		// Restore last used cartography
 		let lastCartography;
 
@@ -135,7 +137,7 @@ export class Application{
 			lastCartography = window.localStorage.getItem('lastCartography');
 		}
 		catch (err){
-			console.error(err.message);
+			console.error(err);
 		}
 
 		if (lastCartography){
@@ -168,7 +170,7 @@ export class Application{
 				jsonSavedCameraPosition = window.localStorage.getItem('lastCameraPosition');
 			}
 			catch (err){
-				console.error(err.message);
+				console.error(err);
 			}
 
 			if (jsonSavedCameraPosition){
@@ -368,6 +370,10 @@ export class Application{
 		Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;' + lat + '&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;' + lon + '&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;' + altitude + '<span>';
 	}
 
+	static #onSelectedImageryChange(imagery){
+		Application.#showToast('Mostrando ' + imagery.name);
+	}
+
 	static #onDocumentVisibilityChange(){
 		if (document.hidden){
 			try{
@@ -375,7 +381,7 @@ export class Application{
 				window.localStorage.setItem('lastCartography', ViewerService.currentImageryName);
 			}
 			catch (err){
-				console.error(err.message);
+				console.error(err);
 			}
 		}
 	}
@@ -472,7 +478,7 @@ export class Application{
 				ViewerService.flyToDataSource(ExternalDataService.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId));
 			}
 			catch (err){
-				console.error('Error processing the file ' + file.name + ': ' + err.message);
+				console.error('Error processing the file ' + file.name + ': ' + err);
 				Application.#showToast('Error al procesar el fichero ' + file.name + ': ' + err.message, Application.#toastType.ERROR);
 			}
 			finally{
@@ -534,7 +540,7 @@ export class Application{
 				const searchResults = await GeocodingService.getCandidates(searchBox.value.trim());
 
 				if (searchResults.length === 0){
-					Application.#showToast('No se han encontrado resultados', Application.#toastType.INFO);
+					Application.#showToast('No se han encontrado resultados');
 					searchBox.value = '';
 				}
 				else{
@@ -550,7 +556,7 @@ export class Application{
 			}
 		}
 		catch(err){
-			console.error('Geododer error: ' + err.message);
+			console.error('Geododer error: ' + err);
 			Application.#showToast('Error en el geocodificador: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
@@ -592,11 +598,11 @@ export class Application{
 				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
 				Application.#domElement.btnUserPosition.setAttribute('active', 'true');
 				Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
-				Application.#showToast('Geolocalización activada', Application.#toastType.INFO);
+				Application.#showToast('Geolocalización activada');
 			}
 			else{
 				Application.#stopGeolocation();
-				Application.#showToast('Geolocalización desactivada', Application.#toastType.INFO);
+				Application.#showToast('Geolocalización desactivada');
 			}
 		}
 		catch (err){
@@ -649,7 +655,7 @@ export class Application{
 	}
 
 	static #processGeolocationError(error){
-		console.error('Geolocation error: ' + error.message);
+		console.error('Geolocation error: ' + error);
 		Application.#showToast('Se ha producido un error en la geolocalización: ' + error.message, Application.#toastType.ERROR);
 		Application.#stopGeolocation();
 	}
@@ -679,26 +685,20 @@ export class Application{
 			const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
 
 			if (headingTrackingActive === 'false'){
-				const headingTrackerStarted = await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
-
-				if (headingTrackerStarted){
-					Application.#domElement.btnPanorama.setAttribute('active', 'true');
-					Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
-					Application.#showToast('Sensor de orientación activado', Application.#toastType.INFO);
-				}
-				else{
-					Application.#showToast('No se ha podido activar el sensor de orientación', Application.#toastType.WARNING);
-				}
+				await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
+				Application.#domElement.btnPanorama.setAttribute('active', 'true');
+				Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
+				Application.#showToast('Sensor de orientación activado');
 			}
 			else{
 				DeviceHeadingTracker.stop();
 				Application.#domElement.btnPanorama.setAttribute('active', 'false');
 				Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
-				Application.#showToast('Sensor de orientación desactivado', Application.#toastType.INFO);
+				Application.#showToast('Sensor de orientación desactivado');
 			}
 		}
 		catch (err){
-			console.error('Orientation sensor error: ' + err.message);
+			console.error('Orientation sensor error: ' + err);
 			Application.#showToast('Se ha producido un error en el sensor de orientación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}

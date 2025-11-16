@@ -241,4 +241,8 @@ export class ViewerService{
 		const canvasEventHandler = new Cesium.ScreenSpaceEventHandler(ViewerService.#viewer.scene.canvas);
 		canvasEventHandler.setInputAction((movement) => callbackFunction(movement), Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 	}
+
+	static onSelectedImageryChange(callbackFunction){
+		Cesium.knockout.getObservable(ViewerService.#viewer.baseLayerPicker.viewModel, 'selectedImagery').subscribe(callbackFunction);
+	}
 }

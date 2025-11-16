@@ -1,8 +1,8 @@
 export class DeviceHeadingTracker{
-	static #onHeadingChange = null;		// Callback function to which the heading will be passed
-	static #orientationSensor = null;	// AbsoluteOrientationSensor instance
-	static #frequency = 60;				// AbsoluteOrientationSensor frequency (Hz)
-	static #filterAlpha = 0.96;			// Low pass filter Alpha
+	static #onHeadingChange = null;		// Callback that receives the updated heading
+	static #orientationSensor = null;	// Active AbsoluteOrientationSensor instance
+	static #frequency = 60;				// Sampling frequency for the AbsoluteOrientationSensor (Hz)
+	static #filterAlpha = 0.96;			// Alpha coefficient for the low-pass filter
 	static #previousHeading = null;
 
 	static async start(onHeadingChange, cameraHeading){
@@ -13,17 +13,14 @@ export class DeviceHeadingTracker{
 
 			DeviceHeadingTracker.#onHeadingChange = onHeadingChange;
 			await DeviceHeadingTracker.#requestPermissions();
-			// Set #previousHeading to the current viewer camera heading, that way the camera will start rotating from there to the curent device heading
+			// Set #previousHeading to the camera’s current heading to start the rotation from the correct angle
 			DeviceHeadingTracker.#previousHeading = cameraHeading;
 
-			// Start sensor
 			if ('AbsoluteOrientationSensor' in window){
 				DeviceHeadingTracker.#startAbsoluteOrientationSensor();
-				return true;
 			}
 			else if ('DeviceOrientationEvent' in window){
 				DeviceHeadingTracker.#startDeviceOrientationFallback();
-				return true;
 			}
 			else{
 				throw new Error('Orientation sensor not supported on this device');
@@ -42,6 +39,7 @@ export class DeviceHeadingTracker{
 		}
 
 		window.removeEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent, true);
+		DeviceHeadingTracker.#onHeadingChange = null;
 		DeviceHeadingTracker.#previousHeading = null;
 	}
 

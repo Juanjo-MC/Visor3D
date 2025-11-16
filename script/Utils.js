@@ -1,23 +1,13 @@
 export class Utils{
 	static async getJSONData(url){
 		const response = await Utils.#getData(url);
-
-		if (response !== null){
-			return response.json();
-		}
-
-		return null;
+		return response.json();
 	}
 
 	static async getCompressedJSONData(url){
 		const response = await Utils.#getData(url);
-
-		if (response !== null){
-			const json = await Utils.#decompress(response.body);
-			return json;
-		}
-
-		return null;
+		const json = await Utils.#decompress(response.body);
+		return json;
 	}
 
 	static async #getData(url){
@@ -31,7 +21,7 @@ export class Utils{
 			return await response;
 		}
 		catch (err){
-			return null;
+			throw err;
 		}
 	}
 
