@@ -19,7 +19,7 @@
 	color: var(--color-white);
 	font: var(--font-standard);
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-	min-width: 250px;
+	min-width: 210px;
 	max-width: 400px;
 	opacity: 0; /* Start hidden */
 	transition: opacity 0.5s ease-in-out;
@@ -41,7 +41,6 @@
 /* Warning (orange) */
 .toast.warning {
 	background-color: rgba(255, 193, 7, 0.75);
-	color: #333;
 }
 
 /* Error (red) */
