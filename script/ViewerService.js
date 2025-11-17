@@ -35,7 +35,7 @@ export class ViewerService{
 		viewer.scene.screenSpaceCameraController.inertiaSpin = 0;
 		viewer.scene.screenSpaceCameraController.inertiaTranslate = 0;
 		viewer.scene.screenSpaceCameraController.inertiaZoom = 0;
-		viewer.camera.percentageChanged = 0.1;
+		viewer.camera.percentageChanged = 0.05;
 		ViewerService.#viewer = viewer;
 	}
 
