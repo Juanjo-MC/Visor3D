@@ -689,12 +689,14 @@ export class Application{
 				await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
 				Application.#domElement.btnPanorama.setAttribute('active', 'true');
 				Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
+				Application.#domElement.compass.removeEventListener('dblclick', Application.#onCompassDoubleClick);
 				Application.#showToast('Sensor de orientación activado');
 			}
 			else{
 				DeviceHeadingTracker.stop();
 				Application.#domElement.btnPanorama.setAttribute('active', 'false');
 				Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
+				Application.#domElement.compass.addEventListener('dblclick', Application.#onCompassDoubleClick);
 				Application.#showToast('Sensor de orientación desactivado');
 			}
 		}
