@@ -148,7 +148,7 @@ export class ViewerService{
 		ViewerService.#viewer.camera.flyTo({
 			destination: Cesium.Cartesian3.fromDegrees(lon, lat, cameraAltitude),
 			duration: duration,
-			easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
+			easingFunction: Cesium.EasingFunction.SINUSOIDAL_OUT,
 			complete: () => ViewerService.#viewer.scene.requestRender(),
 
 			orientation: {
