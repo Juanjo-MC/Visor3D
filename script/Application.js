@@ -376,6 +376,10 @@ export class Application{
 	}
 
 	static #onCompassDoubleClick(){
+		if ('vibrate' in navigator){
+			navigator.vibrate(100);
+		}
+		
 		const currentCameraPosition = ViewerService.getCameraPosition();
 		const currentHeading = Math.ceil(currentCameraPosition.heading);
 		const newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
