@@ -397,7 +397,7 @@ export class Application{
 		}
 
 		ViewerService.flyToPosition(currentCameraPosition.lat, currentCameraPosition.lon, currentCameraPosition.altitude, newHeading, currentCameraPosition.pitch);
-		Application.#showToast('Girando la cámara hacia el ' + headingText);
+		Application.#showToast('Girando el visor hacia el ' + headingText);
 	}
 
 	// POIs
