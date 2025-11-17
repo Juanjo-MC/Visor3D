@@ -84,7 +84,7 @@ export class Application{
 			await Application.#prepareScene();
 		}
 		catch(err){
-			console.error('Error during initialisation: ' + err);
+			console.error(err);
 			Application.#showToast('Se ha producido un error al inicializar la aplicación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
@@ -110,13 +110,14 @@ export class Application{
 
 		ViewerService.onSelectedImageryChange(Application.#onSelectedImageryChange);
 		document.addEventListener('visibilitychange', Application.#onDocumentVisibilityChange);
-		Application.#domElement.toggleCumbres.addEventListener('change', Application.#onCumbresToggleChange);
-		Application.#domElement.togglePoblaciones.addEventListener('change', Application.#onPoblacionesToggleChange);
-		Application.#domElement.toggleMasasDeAgua.addEventListener('change', Application.#onMasasDeAguaToggleChange);
+		Application.#domElement.compass.addEventListener('dblclick', Application.#onCompassDoubleClick);
+		Application.#onPOIsVisibilityToggleChange(Application.#domElement.toggleCumbres, POIManager.poiType.CUMBRE);
+		Application.#onPOIsVisibilityToggleChange(Application.#domElement.togglePoblaciones, POIManager.poiType.POBLACION);
+		Application.#onPOIsVisibilityToggleChange(Application.#domElement.toggleMasasDeAgua, POIManager.poiType.MASA_DE_AGUA);
 		Application.#domElement.minVisibilityDistanceControl.addEventListener('input', Application.#onMinVisibilityDistanceInput);
-		Application.#domElement.minVisibilityDistanceControl.addEventListener('change', Application.#onMinVisibilityDistanceChange);
+		Application.#domElement.minVisibilityDistanceControl.addEventListener('change', Application.#setPOIsVisibilityRange);
 		Application.#domElement.maxVisibilityDistanceControl.addEventListener('input', Application.#onMaxVisibilityDistanceInput);
-		Application.#domElement.maxVisibilityDistanceControl.addEventListener('change', Application.#onMaxVisibilityDistanceChange);
+		Application.#domElement.maxVisibilityDistanceControl.addEventListener('change', Application.#setPOIsVisibilityRange);
 		Application.#domElement.fileInput.addEventListener('change', Application.#onFileInputChange);
 		Application.#domElement.btnShow.addEventListener('click', Application.#onBtnShowClick);
 		Application.#domElement.btnHide.addEventListener('click', Application.#onBtnHideClick);
@@ -227,18 +228,12 @@ export class Application{
 		toast.classList.add('toast', type);
 		toast.innerHTML = '<i class="toast-icon ' + iconClass + '"></i>' + message;
 		container.appendChild(toast);
-
-		setTimeout(() => {
-			toast.classList.add('show');
-		}, 10);
+		requestAnimationFrame(() => toast.classList.add('show'));
 
 		setTimeout(() => {
 			toast.classList.remove('show');
 			toast.classList.add('hide');
-
-			setTimeout(() => {
-				container.removeChild(toast);
-			}, 500);
+			toast.addEventListener('transitionend', () => container.removeChild(toast), {once: true});
 		}, duration);
 	}
 
@@ -351,15 +346,15 @@ export class Application{
 		let lon = '----';
 		let altitude = '----';
 
-			if (position && !isObject){
-				lat = position.lat.toFixed(6);
-				lon = position.lon.toFixed(6);
-				altitude = await ViewerService.getElevation(lat, lon);
+		if (position && !isObject){
+			lat = position.lat.toFixed(6);
+			lon = position.lon.toFixed(6);
+			altitude = await ViewerService.getElevation(lat, lon);
 
-				if (altitude){
-					altitude = altitude.toFixed(0);
-				}
+			if (altitude){
+				altitude = altitude.toFixed(0);
 			}
+		}
 
 		Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;' + lat + '&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;' + lon + '&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;' + altitude + '<span>';
 	}
@@ -380,17 +375,34 @@ export class Application{
 		}
 	}
 
+	static #onCompassDoubleClick(){
+		const currentCameraPosition = ViewerService.getCameraPosition();
+		const currentHeading = Math.ceil(currentCameraPosition.heading);
+		const newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
+		let headingText;
+
+		switch (newHeading){
+			case 0:
+				headingText = 'Norte';
+				break;
+			case 90:
+				headingText = 'Este';
+				break;
+			case 180:
+				headingText = 'Sur';
+				break;
+			case 270:
+				headingText = 'Oeste';
+				break;
+		}
+
+		ViewerService.flyToPosition(currentCameraPosition.lat, currentCameraPosition.lon, currentCameraPosition.altitude, newHeading, currentCameraPosition.pitch);
+		Application.#showToast('Girando la camara hacia el ' + headingText);
+	}
+
 	// POIs
-	static async #onCumbresToggleChange(){
-		await Application.#setPOIsVisibility(POIManager.poiType.CUMBRE, this.checked);
-	}
-
-	static async #onPoblacionesToggleChange(){
-		await Application.#setPOIsVisibility(POIManager.poiType.POBLACION, this.checked);
-	}
-
-	static async #onMasasDeAguaToggleChange(){
-		await Application.#setPOIsVisibility(POIManager.poiType.MASA_DE_AGUA, this.checked);
+	static async #onPOIsVisibilityToggleChange(domElement, poiType){
+		domElement.addEventListener("change", async e => Application.#setPOIsVisibility(poiType, e.target.checked));
 	}
 
 	static async #setPOIsVisibility(poiType, visible){
@@ -414,16 +426,14 @@ export class Application{
 		Application.#domElement.minVisibilityDistanceLabel.innerHTML = this.value + '&nbsp;km';
 	}
 
-	static #onMinVisibilityDistanceChange(){
-		Application.#setPOIsVisibilityRange();
-	}
-
 	static #onMaxVisibilityDistanceInput(){
 		Application.#domElement.maxVisibilityDistanceLabel.innerHTML = this.value + '&nbsp;km';
 	}
 
-	static #onMaxVisibilityDistanceChange(){
-		Application.#setPOIsVisibilityRange();
+	static #setPOIsVisibilityRange(){
+		const visibilityRange = Application.#getPOIsVisibilityRange();
+		POIManager.setPOIsVisibilityRange(visibilityRange.min, visibilityRange.max);
+		ViewerService.refreshScene();
 	}
 
 	static #getPOIsVisibilityRange(){
@@ -432,14 +442,8 @@ export class Application{
 
 		return {
 			min: Math.max(Math.min(a, b) * 1000, 10),
-			max: Math.max(a, b) * 1000
+			max: Math.max(a, b) * 1000,
 		};
-	}
-
-	static #setPOIsVisibilityRange(){
-		const visibilityRange = Application.#getPOIsVisibilityRange();
-		POIManager.setPOIsVisibilityRange(visibilityRange.min, visibilityRange.max);
-		ViewerService.refreshScene();
 	}
 
 	// External data
@@ -475,8 +479,8 @@ export class Application{
 				ViewerService.flyToDataSource(ExternalDataService.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId));
 			}
 			catch (err){
-				console.error('Error processing the file ' + file.name + ': ' + err);
-				Application.#showToast('Error al procesar el fichero ' + file.name + ': ' + err.message, Application.#toastType.ERROR);
+				console.error(err);
+				Application.#showToast('Se ha producido un error al procesar el fichero ' + file.name + ': ' + err.message, Application.#toastType.ERROR);
 			}
 			finally{
 				this.value = null;
@@ -553,8 +557,8 @@ export class Application{
 			}
 		}
 		catch(err){
-			console.error('Geododer error: ' + err);
-			Application.#showToast('Error en el geocodificador: ' + err.message, Application.#toastType.ERROR);
+			console.error(err);
+			Application.#showToast('Se ha producido un error en el geocodificador: ' + err.message, Application.#toastType.ERROR);
 		}
 	}
 
@@ -652,14 +656,14 @@ export class Application{
 	}
 
 	static #processGeolocationError(error){
-		console.error('Geolocation error: ' + error);
+		console.error(error);
 		Application.#showToast('Se ha producido un error en la geolocalización: ' + error.message, Application.#toastType.ERROR);
 		Application.#stopGeolocation();
 	}
 
 	static #stopGeolocation(){
-		GeolocationService.stopTrackingPosition();
 		Application.#isGeolocationStopping = true;
+		GeolocationService.stopTrackingPosition();
 		Application.#domElement.btnUserPosition.setAttribute('active', 'false');
 		Application.#domElement.btnUserPosition.style.color = 'rgb(237, 255, 255)';
 
@@ -695,7 +699,7 @@ export class Application{
 			}
 		}
 		catch (err){
-			console.error('Orientation sensor error: ' + err);
+			console.error(err);
 			Application.#showToast('Se ha producido un error en el sensor de orientación: ' + err.message, Application.#toastType.ERROR);
 		}
 	}

@@ -1,5 +1,6 @@
 export class ViewerService{
 	static #viewer;
+	static #canvasEventHandler;
 
 	static get viewer(){
 		return ViewerService.#viewer;
@@ -138,15 +139,15 @@ export class ViewerService{
 		const models = ViewerService.#viewer.baseLayerPicker.viewModel.imageryProviderViewModels;
 		const match = models.find(model => model.name === imageryName);
 
-			if (match){
-				ViewerService.#viewer.baseLayerPicker.viewModel.selectedImagery = match;
-			}
+		if (match){
+			ViewerService.#viewer.baseLayerPicker.viewModel.selectedImagery = match;
+		}
 	}
 
-	static flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch){
+	static flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch, duration = 5){
 		ViewerService.#viewer.camera.flyTo({
 			destination: Cesium.Cartesian3.fromDegrees(lon, lat, cameraAltitude),
-			duration: 5,
+			duration: duration,
 			easingFunction: Cesium.EasingFunction.QUINTIC_IN_OUT,
 			complete: () => ViewerService.#viewer.scene.requestRender(),
 
@@ -224,6 +225,14 @@ export class ViewerService{
 
 	// Event handlers
 
+	static #getCanvasEventHandler(){
+		if (!ViewerService.#canvasEventHandler){
+			ViewerService.#canvasEventHandler = new Cesium.ScreenSpaceEventHandler(ViewerService.#viewer.scene.canvas);
+		}
+
+		return ViewerService.#canvasEventHandler;
+	}
+
 	static onCameraChange(callbackFunction){
 		ViewerService.#viewer.camera.changed.addEventListener(callbackFunction);
 	}
@@ -233,13 +242,11 @@ export class ViewerService{
 	}
 
 	static onCanvasClick(callbackFunction){
-		const canvasEventHandler = new Cesium.ScreenSpaceEventHandler(ViewerService.#viewer.scene.canvas);
-		canvasEventHandler.setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_CLICK);
+		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 
 	static onCanvasMouseMove(callbackFunction){
-		const canvasEventHandler = new Cesium.ScreenSpaceEventHandler(ViewerService.#viewer.scene.canvas);
-		canvasEventHandler.setInputAction((movement) => callbackFunction(movement), Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+		ViewerService.#getCanvasEventHandler().setInputAction((movement) => callbackFunction(movement), Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 	}
 
 	static onSelectedImageryChange(callbackFunction){
