@@ -103,8 +103,8 @@ export class Application{
 		ViewerService.onCameraChange(Application.#onCameraChange);
 		ViewerService.onCameraStopMove(Application.#onCameraStopMove);
 		ViewerService.onCanvasClick(Application.#onCanvasClick);
-		ViewerService.onCanvasMouseDown(Application.#onScreenEdgeMouseDown);
-		ViewerService.onCanvasMouseUp(ViewerService.stopRotation);
+		ViewerService.onCanvasMouseDown(Application.#onMouseDown);
+		ViewerService.onCanvasMouseUp(Application.#onMouseUp);
 
 		if (!Device.isMobile() && Device.hasMouse()){
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
@@ -340,16 +340,28 @@ export class Application{
 		}
 	}
 
-	static #onScreenEdgeMouseDown(click){
-		const MARGIN = 50; // px from edge
+	static #onMouseDown(click){
+		const margin = 50;
 		const x = click.position.x;
+		const y = click.position.y;
 
-		if (x < MARGIN){
-			ViewerService.startRotation(ViewerService.rotationDirection.COUNTERCLOCKWISE, 10);
+		if (x < margin){
+			ViewerService.startRotation(ViewerService.rotationDirection.COUNTERCLOCKWISE);
 		}
-		else if (x > window.innerWidth - MARGIN){
-			ViewerService.startRotation(ViewerService.rotationDirection.CLOCKWISE, 10);
+		else if (x > window.innerWidth - margin){
+			ViewerService.startRotation(ViewerService.rotationDirection.CLOCKWISE);
 		}
+		else if (y < margin){
+			ViewerService.startPitchRotation(ViewerService.pitchRotationDirection.UP);
+		}
+		else if (y > window.innerHeight - margin){
+			ViewerService.startPitchRotation(ViewerService.pitchRotationDirection.DOWN);
+		}
+	}
+	
+	static #onMouseUp(click){
+		ViewerService.stopRotation();
+		ViewerService.stopPitchRotation();
 	}
 
 	static async #onMouseMove(movement){

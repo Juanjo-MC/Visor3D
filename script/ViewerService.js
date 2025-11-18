@@ -7,7 +7,13 @@ export class ViewerService{
 		COUNTERCLOCKWISE: -1,
 	});
 
+	static pitchRotationDirection = Object.freeze({
+		DOWN: -1,
+		UP: 1,
+	});
+
 	static #isRotating = false;
+	static #isPitchRotating = false;
 	static #rotationSpeed = 0	// Radians per second
 	static #lastFrameTime = null;
 
@@ -273,6 +279,51 @@ export class ViewerService{
 		ViewerService.#lastFrameTime = null;
 	}
 
+	static startPitchRotation(direction, rotationSpeed = 10){
+		if (ViewerService.#isPitchRotating){
+			return;
+		}
+
+		ViewerService.#isPitchRotating = true;
+		ViewerService.#rotationSpeed = Cesium.Math.toRadians(rotationSpeed);
+		ViewerService.#lastFrameTime = performance.now();
+
+		const step = (time) => {
+			if (!ViewerService.#isPitchRotating){
+				return;
+			}
+
+			const delta = (time - ViewerService.#lastFrameTime) / 1000;
+			ViewerService.#lastFrameTime = time;
+			const camera = ViewerService.#viewer.camera;
+			const newPitch = camera.pitch + direction * ViewerService.#rotationSpeed * delta;
+			
+			if (newPitch < Math.PI / -2 || newPitch > Math.PI /2){
+				ViewerService.stopPitchRotation
+			}
+
+			camera.setView({
+				destination: camera.positionWC,
+				orientation: {
+					heading: camera.heading,
+					pitch: newPitch,
+					roll: 0,
+				},
+			});
+
+			ViewerService.#viewer.scene.requestRender();
+			requestAnimationFrame(step);
+		};
+
+		requestAnimationFrame(step);
+	}
+
+	static stopPitchRotation(){
+		ViewerService.#isPitchRotating = false;
+		ViewerService.#rotationSpeed = 0;
+		ViewerService.#lastFrameTime = null;
+	}
+
 	// Event handlers
 
 	static #getCanvasEventHandler(){
@@ -294,11 +345,11 @@ export class ViewerService{
 	static onCanvasClick(callbackFunction){
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
-	
+
 	static onCanvasMouseDown(callbackFunction){
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_DOWN);
 	}
-	
+
 	static onCanvasMouseUp(callbackFunction){
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_UP);
 	}
