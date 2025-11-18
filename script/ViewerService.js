@@ -2,18 +2,17 @@ export class ViewerService{
 	static #viewer;
 	static #canvasEventHandler;
 
-	static rotationDirection = Object.freeze({
-		CLOCKWISE: 1,
-		COUNTERCLOCKWISE: -1,
+	static rotationAxis = Object.freeze({
+		HEADING: 'heading',
+		PITCH: 'pitch',
 	});
 
-	static pitchRotationDirection = Object.freeze({
-		DOWN: -1,
-		UP: 1,
+	static rotationDirection = Object.freeze({
+		POSITIVE: 1,
+		NEGATIVE: -1,
 	});
 
 	static #isRotating = false;
-	static #isPitchRotating = false;
 	static #rotationSpeed = 0	// Radians per second
 	static #lastFrameTime = null;
 
@@ -238,7 +237,7 @@ export class ViewerService{
 		ViewerService.viewer.scene.requestRender();
 	}
 
-	static startRotation(direction, rotationSpeed = 10){
+	static startRotation(axis, direction, rotationSpeed = 10){
 		if (ViewerService.#isRotating){
 			return;
 		}
@@ -255,13 +254,26 @@ export class ViewerService{
 			const delta = (time - ViewerService.#lastFrameTime) / 1000;
 			ViewerService.#lastFrameTime = time;
 			const camera = ViewerService.#viewer.camera;
-			const newHeading = camera.heading + direction * ViewerService.#rotationSpeed * delta;
+			let newHeading = camera.heading;
+			let newPitch = camera.pitch;
+
+			if (axis === ViewerService.rotationAxis.HEADING){
+				newHeading += direction * ViewerService.#rotationSpeed * delta;
+			}
+			else if (axis === ViewerService.rotationAxis.PITCH){
+				newPitch += direction * ViewerService.#rotationSpeed * delta;
+
+				if (newPitch < -Math.PI / 2 || newPitch > Math.PI / 2){
+					ViewerService.stopRotation();
+					return;
+				}
+			}
 
 			camera.setView({
 				destination: camera.positionWC,
 				orientation: {
 					heading: newHeading,
-					pitch: camera.pitch,
+					pitch: newPitch,
 					roll: 0,
 				},
 			});
@@ -278,53 +290,6 @@ export class ViewerService{
 		ViewerService.#rotationSpeed = 0;
 		ViewerService.#lastFrameTime = null;
 	}
-
-	static startPitchRotation(direction, rotationSpeed = 10){
-		if (ViewerService.#isPitchRotating){
-			return;
-		}
-
-		ViewerService.#isPitchRotating = true;
-		ViewerService.#rotationSpeed = Cesium.Math.toRadians(rotationSpeed);
-		ViewerService.#lastFrameTime = performance.now();
-
-		const step = (time) => {
-			if (!ViewerService.#isPitchRotating){
-				return;
-			}
-
-			const delta = (time - ViewerService.#lastFrameTime) / 1000;
-			ViewerService.#lastFrameTime = time;
-			const camera = ViewerService.#viewer.camera;
-			const newPitch = camera.pitch + direction * ViewerService.#rotationSpeed * delta;
-			
-			if (newPitch < Math.PI / -2 || newPitch > Math.PI /2){
-				ViewerService.stopPitchRotation
-			}
-
-			camera.setView({
-				destination: camera.positionWC,
-				orientation: {
-					heading: camera.heading,
-					pitch: newPitch,
-					roll: 0,
-				},
-			});
-
-			ViewerService.#viewer.scene.requestRender();
-			requestAnimationFrame(step);
-		};
-
-		requestAnimationFrame(step);
-	}
-
-	static stopPitchRotation(){
-		ViewerService.#isPitchRotating = false;
-		ViewerService.#rotationSpeed = 0;
-		ViewerService.#lastFrameTime = null;
-	}
-
-	// Event handlers
 
 	static #getCanvasEventHandler(){
 		if (!ViewerService.#canvasEventHandler){

@@ -103,8 +103,8 @@ export class Application{
 		ViewerService.onCameraChange(Application.#onCameraChange);
 		ViewerService.onCameraStopMove(Application.#onCameraStopMove);
 		ViewerService.onCanvasClick(Application.#onCanvasClick);
-		ViewerService.onCanvasMouseDown(Application.#onMouseDown);
-		ViewerService.onCanvasMouseUp(Application.#onMouseUp);
+		ViewerService.onCanvasMouseDown(Application.#onCanvasMouseDown);
+		ViewerService.onCanvasMouseUp(ViewerService.stopRotation);
 
 		if (!Device.isMobile() && Device.hasMouse()){
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
@@ -340,28 +340,23 @@ export class Application{
 		}
 	}
 
-	static #onMouseDown(click){
+	static #onCanvasMouseDown(click){
 		const margin = 50;
 		const x = click.position.x;
 		const y = click.position.y;
 
 		if (x < margin){
-			ViewerService.startRotation(ViewerService.rotationDirection.COUNTERCLOCKWISE);
+			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
 		}
 		else if (x > window.innerWidth - margin){
-			ViewerService.startRotation(ViewerService.rotationDirection.CLOCKWISE);
+			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
 		}
 		else if (y < margin){
-			ViewerService.startPitchRotation(ViewerService.pitchRotationDirection.UP);
+			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
 		}
 		else if (y > window.innerHeight - margin - 20){ // Allow some more marging here because the widgets at the bottom are taking all the width of th screen
-			ViewerService.startPitchRotation(ViewerService.pitchRotationDirection.DOWN);
+			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
 		}
-	}
-	
-	static #onMouseUp(click){
-		ViewerService.stopRotation();
-		ViewerService.stopPitchRotation();
 	}
 
 	static async #onMouseMove(movement){
