@@ -354,7 +354,7 @@ export class Application{
 		else if (y < margin){
 			ViewerService.startPitchRotation(ViewerService.pitchRotationDirection.UP);
 		}
-		else if (y > window.innerHeight - margin){
+		else if (y > window.innerHeight - margin - 20){ // Allow some more marging here because the widgets at the bottom are taking all the width of th screen
 			ViewerService.startPitchRotation(ViewerService.pitchRotationDirection.DOWN);
 		}
 	}
