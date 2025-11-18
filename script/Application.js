@@ -103,6 +103,8 @@ export class Application{
 		ViewerService.onCameraChange(Application.#onCameraChange);
 		ViewerService.onCameraStopMove(Application.#onCameraStopMove);
 		ViewerService.onCanvasClick(Application.#onCanvasClick);
+		ViewerService.onCanvasMouseDown(Application.#onScreenEdgeMouseDown);
+		ViewerService.onCanvasMouseUp(ViewerService.stopRotation);
 
 		if (!Device.isMobile() && Device.hasMouse()){
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
@@ -335,6 +337,18 @@ export class Application{
 					}, 5000);
 				}
 			}
+		}
+	}
+
+	static #onScreenEdgeMouseDown(click){
+		const MARGIN = 50; // px from edge
+		const x = click.position.x;
+
+		if (x < MARGIN){
+			ViewerService.startRotation(ViewerService.rotationDirection.COUNTERCLOCKWISE, 10);
+		}
+		else if (x > window.innerWidth - MARGIN){
+			ViewerService.startRotation(ViewerService.rotationDirection.CLOCKWISE, 10);
 		}
 	}
 
