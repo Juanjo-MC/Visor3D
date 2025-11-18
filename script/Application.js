@@ -104,7 +104,7 @@ export class Application{
 		ViewerService.onCameraStopMove(Application.#onCameraStopMove);
 		ViewerService.onCanvasClick(Application.#onCanvasClick);
 		ViewerService.onCanvasMouseDown(Application.#onCanvasMouseDown);
-		ViewerService.onCanvasMouseUp(ViewerService.stopRotation);
+		ViewerService.onCanvasMouseUp(Application.#onCanvasMouseUp);
 
 		if (!Device.isMobile() && Device.hasMouse()){
 			ViewerService.onCanvasMouseMove(Application.#onMouseMove);
@@ -346,17 +346,26 @@ export class Application{
 		const y = click.position.y;
 
 		if (x < margin){
+			ViewerService.enableCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
 		}
 		else if (x > window.innerWidth - margin){
+			ViewerService.enableCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
 		}
 		else if (y < margin){
+			ViewerService.enableCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
 		}
 		else if (y > window.innerHeight - margin - 20){ // Allow some more marging here because the widgets at the bottom are taking all the width of th screen
+			ViewerService.enableCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
 		}
+	}
+
+	static #onCanvasMouseUp(click){
+		ViewerService.stopRotation();
+		ViewerService.enableCameraGestures(true);
 	}
 
 	static async #onMouseMove(movement){

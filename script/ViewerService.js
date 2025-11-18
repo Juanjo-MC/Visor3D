@@ -291,6 +291,16 @@ export class ViewerService{
 		ViewerService.#lastFrameTime = null;
 	}
 
+	static enableCameraGestures(enable){
+		const controller = ViewerService.#viewer.scene.screenSpaceCameraController;
+		controller.enableRotate = enable;
+		controller.enableTranslate = enable;
+		controller.enableZoom = enable;
+		controller.enableTilt = enable;
+		controller.enableLook = enable;
+	}
+
+	// Event handlers
 	static #getCanvasEventHandler(){
 		if (!ViewerService.#canvasEventHandler){
 			ViewerService.#canvasEventHandler = new Cesium.ScreenSpaceEventHandler(ViewerService.#viewer.scene.canvas);
