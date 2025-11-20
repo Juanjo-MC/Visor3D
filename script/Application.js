@@ -409,16 +409,18 @@ export class Application{
 		const clickX = event.clientX - compassRect.left;
 		const isRightHalf = clickX > compassRect.width / 2;
 		const currentCameraPosition = ViewerService.getCameraPosition();
-		const currentHeading = Math.ceil(currentCameraPosition.heading);
+		let currentHeading; // = Math.ceil(currentCameraPosition.heading);
 		let newHeading;
 
 		if (isRightHalf){
+			currentHeading = Math.ceil(currentCameraPosition.heading);
 			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
 		} else{
+			currentHeading = Math.floor(currentCameraPosition.heading);
 			const delta = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // offset to next cardinal clockwise
 			newHeading = (currentHeading + delta - 90 + 360) % 360;
-		}		
-		
+		}
+
 		let headingText;
 
 		switch (newHeading){
