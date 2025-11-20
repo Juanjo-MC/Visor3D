@@ -211,19 +211,26 @@ export class ViewerService{
 		});
 	}
 
-	static getCartographicScreenPosition(position){ // {lat, lon}
-		const cartesianPosition = ViewerService.#viewer.scene.pickPosition(position);
+	static getCartographicScreenPosition(windowPosition){ // {lat, lon}
+		const scene = ViewerService.#viewer.scene;
+		const globe = scene.globe;
+		const ray = scene.camera.getPickRay(windowPosition);
 
-		if (cartesianPosition){
-			const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesianPosition);
-			const lat = Cesium.Math.toDegrees(cartographicPosition.latitude);
-			const lon = Cesium.Math.toDegrees(cartographicPosition.longitude);
-			return {lat: lat, lon: lon};
+		if (ray){
+			const cartesian = globe.pick(ray, scene);
+
+			if (cartesian){
+				const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian);
+				return {
+					lat: Cesium.Math.toDegrees(cartographicPosition.latitude),
+					lon: Cesium.Math.toDegrees(cartographicPosition.longitude)
+				};
+			}
 		}
 	}
 
-	static isCursorOverObject(position){
-		const pickedObject = ViewerService.#viewer.scene.pick(position);
+	static isCursorOverObject(windowPosition){
+		const pickedObject = ViewerService.#viewer.scene.pick(windowPosition);
 
 		if (!pickedObject){
 			return false;
@@ -237,13 +244,13 @@ export class ViewerService{
 		ViewerService.viewer.scene.requestRender();
 	}
 
-	static startRotation(axis, direction, rotationSpeed = 10){
+	static startRotation(axis, direction, speed = 10){
 		if (ViewerService.#isRotating){
 			return;
 		}
 
 		ViewerService.#isRotating = true;
-		ViewerService.#rotationSpeed = Cesium.Math.toRadians(rotationSpeed);
+		ViewerService.#rotationSpeed = Cesium.Math.toRadians(speed);
 		ViewerService.#lastFrameTime = performance.now();
 
 		const step = (time) => {
@@ -263,7 +270,7 @@ export class ViewerService{
 			else if (axis === ViewerService.rotationAxis.PITCH){
 				newPitch += direction * ViewerService.#rotationSpeed * delta;
 
-				if (newPitch < -Math.PI / 2 || newPitch > Math.PI / 2){
+				if (newPitch < -Math.PI / 2.0 || newPitch > Math.PI / 2.0){
 					ViewerService.stopRotation();
 					return;
 				}
@@ -274,7 +281,7 @@ export class ViewerService{
 				orientation: {
 					heading: newHeading,
 					pitch: newPitch,
-					roll: 0,
+					roll: camera.roll,
 				},
 			});
 
@@ -291,13 +298,13 @@ export class ViewerService{
 		ViewerService.#lastFrameTime = null;
 	}
 
-	static enableCameraGestures(enable){
+	static toggleCameraGestures(enabled){
 		const controller = ViewerService.#viewer.scene.screenSpaceCameraController;
-		controller.enableRotate = enable;
-		controller.enableTranslate = enable;
-		controller.enableZoom = enable;
-		controller.enableTilt = enable;
-		controller.enableLook = enable;
+		controller.enableRotate = enabled;
+		controller.enableTranslate = enabled;
+		controller.enableZoom = enabled;
+		controller.enableTilt = enabled;
+		controller.enableLook = enabled;
 	}
 
 	// Event handlers

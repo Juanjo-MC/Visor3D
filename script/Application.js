@@ -346,37 +346,36 @@ export class Application{
 		const y = click.position.y;
 
 		if (x < margin){
-			ViewerService.enableCameraGestures(false);
+			ViewerService.toggleCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
 		}
 		else if (x > window.innerWidth - margin){
-			ViewerService.enableCameraGestures(false);
+			ViewerService.toggleCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
 		}
 		else if (y < margin){
-			ViewerService.enableCameraGestures(false);
+			ViewerService.toggleCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
 		}
-		else if (y > window.innerHeight - margin - 20){ // Allow some more marging here because the widgets at the bottom are taking all the width of th screen
-			ViewerService.enableCameraGestures(false);
+		else if (y > window.innerHeight - margin - 20){ // Allow some more margin here because the widgets at the bottom are taking all the width of the screen
+			ViewerService.toggleCameraGestures(false);
 			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
 		}
 	}
 
 	static #onCanvasMouseUp(click){
 		ViewerService.stopRotation();
-		ViewerService.enableCameraGestures(true);
+		ViewerService.toggleCameraGestures(true);
 	}
 
 	static async #onMouseMove(movement){
 		const mousePosition = movement.endPosition;
 		const position = ViewerService.getCartographicScreenPosition(mousePosition);
-		const isObject = ViewerService.isCursorOverObject(mousePosition);
 		let lat = '----';
 		let lon = '----';
 		let altitude = '----';
 
-		if (position && !isObject){
+		if (position){
 			lat = position.lat.toFixed(6);
 			lon = position.lon.toFixed(6);
 			altitude = await ViewerService.getElevation(lat, lon);
@@ -406,9 +405,20 @@ export class Application{
 	}
 
 	static #onCompassDoubleClick(){
+		const compassRect = event.currentTarget.getBoundingClientRect();
+		const clickX = event.clientX - compassRect.left;
+		const isRightHalf = clickX > compassRect.width / 2;
 		const currentCameraPosition = ViewerService.getCameraPosition();
 		const currentHeading = Math.ceil(currentCameraPosition.heading);
-		const newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
+		let newHeading;
+
+		if (isRightHalf){
+			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
+		} else{
+			const delta = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // offset to next cardinal clockwise
+			newHeading = (currentHeading + delta - 90 + 360) % 360;
+		}		
+		
 		let headingText;
 
 		switch (newHeading){
