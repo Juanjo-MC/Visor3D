@@ -282,13 +282,15 @@ export class Application{
 	}
 
 	static async #onCanvasClick(click){
+		// On touch devices, users may tap slightly above terrain features, over the sky area
+		// To handle this, we search for coordinates up to 'yPixelsTolerance' pixels below the touch position
+		const yPixelsTolerance = 20;
+		let y = click.position.y;
 		let clickCartographicPosition;
 
-		// On touch devices, users may tap slightly above terrain features, over the sky area
-		// To handle this, we search for coordinates up to 20 pixels below the touch position
-		for (let i = 0; i < 20; i++){
-			clickCartographicPosition = ViewerService.getCartographicScreenPosition(click.position);
-			click.position.y += 1;
+		for (let i = 0; i < yPixelsTolerance; i++){
+			clickCartographicPosition = ViewerService.getCartographicScreenPosition({x: click.position.x, y: y});
+			y += 1;
 
 			if (clickCartographicPosition){
 				break;
@@ -341,26 +343,49 @@ export class Application{
 	}
 
 	static #onCanvasMouseDown(click){
+		const delay = 500;
 		const margin = 50;
 		const x = click.position.x;
 		const y = click.position.y;
+		const initialPos = { x, y };
+		let mouseStillDown = true;
+		
+		const onMouseUp = () => { // Listen for mouseup to cancel
+			mouseStillDown = false;
+			window.removeEventListener("mouseup", onMouseUp);
+			window.removeEventListener("mousemove", onMouseMove);
+		};
+		
+		const onMouseMove = (e) => { // Listen for mousemove to detect position change
 
-		if (x < margin){
-			ViewerService.toggleCameraGestures(false);
-			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
-		}
-		else if (x > window.innerWidth - margin){
-			ViewerService.toggleCameraGestures(false);
-			ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
-		}
-		else if (y < margin){
-			ViewerService.toggleCameraGestures(false);
-			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
-		}
-		else if (y > window.innerHeight - margin - 20){ // Allow some more margin here because the widgets at the bottom are taking all the width of the screen
-			ViewerService.toggleCameraGestures(false);
-			ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
-		}
+			if (Math.abs(e.clientX - initialPos.x) > 5 || Math.abs(e.clientY - initialPos.y) > 5) {
+				mouseStillDown = false;
+				window.removeEventListener("mouseup", onMouseUp);
+				window.removeEventListener("mousemove", onMouseMove);
+			}
+		};
+
+		window.addEventListener("mouseup", onMouseUp);
+		window.addEventListener("mousemove", onMouseMove);
+
+		setTimeout(() => {
+			if (x < margin){
+				ViewerService.toggleCameraGestures(false);
+				ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
+			}
+			else if (x > window.innerWidth - margin){
+				ViewerService.toggleCameraGestures(false);
+				ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
+			}
+			else if (y < margin){
+				ViewerService.toggleCameraGestures(false);
+				ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
+			}
+			else if (y > window.innerHeight - margin - 20){ // Allow some more margin here because the widgets at the bottom are taking all the width of the screen
+				ViewerService.toggleCameraGestures(false);
+				ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
+			}
+		}, delay);
 	}
 
 	static #onCanvasMouseUp(click){
@@ -369,8 +394,7 @@ export class Application{
 	}
 
 	static async #onMouseMove(movement){
-		const mousePosition = movement.endPosition;
-		const position = ViewerService.getCartographicScreenPosition(mousePosition);
+		const position = ViewerService.getCartographicScreenPosition(movement.endPosition);
 		let lat = '----';
 		let lon = '----';
 		let altitude = '----';
@@ -406,10 +430,10 @@ export class Application{
 
 	static #onCompassDoubleClick(){
 		const compassRect = event.currentTarget.getBoundingClientRect();
-		const clickX = event.clientX - compassRect.left;
-		const isRightHalf = clickX > compassRect.width / 2;
+		const x = event.clientX - compassRect.left;
+		const isRightHalf = x > compassRect.width / 2;
 		const currentCameraPosition = ViewerService.getCameraPosition();
-		let currentHeading; // = Math.ceil(currentCameraPosition.heading);
+		let currentHeading;
 		let newHeading;
 
 		if (isRightHalf){
@@ -417,8 +441,8 @@ export class Application{
 			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
 		} else{
 			currentHeading = Math.floor(currentCameraPosition.heading);
-			const delta = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // offset to next cardinal clockwise
-			newHeading = (currentHeading + delta - 90 + 360) % 360;
+			const offset = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // offset to next cardinal clockwise
+			newHeading = (currentHeading + offset - 90 + 360) % 360;
 		}
 
 		let headingText;
