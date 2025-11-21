@@ -12,6 +12,9 @@ export class POIManager{
 		POBLACION: Cesium.Color.fromBytes(253, 246, 228, 190),
 		MASA_DE_AGUA: Cesium.Color.fromBytes(69, 127, 176, 190),
 	});
+	
+	static #WHITE_LINE_2X15_PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAPCAYAAADOKB76AAAAF0lEQVR4nGP8////fwYGBgYmBigYEAYAGHwEGkfF28sAAAAASUVORK5CYII=';
+	static #WHITE_LINE_3X20_PX = '';
 
 	static async initialize(viewer){
 		POIManager.#poiDataSource = await viewer.dataSources.add(new Cesium.CustomDataSource('poiDataSource'));
@@ -124,7 +127,7 @@ export class POIManager{
 					disableDepthTestDistance: 0,
 					distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
 					scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 20000, 0.4),
-					pixelOffset: new Cesium.Cartesian2(0, -15),
+					pixelOffset: new Cesium.Cartesian2(0, -20),
 					verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
 					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
 					text: poiName,
@@ -138,14 +141,12 @@ export class POIManager{
 				billboard: {
 					disableDepthTestDistance: 0,
 					distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
-					pixelOffset: new Cesium.Cartesian2(0, -13),
+					pixelOffset: new Cesium.Cartesian2(0, -18),
 					verticalOrigin: Cesium.VerticalOrigin.TOP,
 					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
 					//color: labelColor,
-					color: Cesium.Color.ORANGERED,
-					image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAPCAYAAADOKB76AAAAF0lEQVR4nGP8////fwYGBgYmBigYEAYAGHwEGkfF28sAAAAASUVORK5CYII=',
-
-					
+					color: Cesium.Color.BLACK,
+					image: POIManager.#WHITE_LINE_2X15_PX,				
 				}
 
 			});
