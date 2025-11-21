@@ -343,47 +343,53 @@ export class Application{
 	}
 
 	static #onCanvasMouseDown(click){
-		const delay = 500;
+		const delay = 750;
 		const margin = 50;
 		const x = click.position.x;
 		const y = click.position.y;
-		const initialPos = { x, y };
 		let mouseStillDown = true;
-		
-		const onMouseUp = () => { // Listen for mouseup to cancel
-			mouseStillDown = false;
-			window.removeEventListener("mouseup", onMouseUp);
-			window.removeEventListener("mousemove", onMouseMove);
-		};
-		
-		const onMouseMove = (e) => { // Listen for mousemove to detect position change
+		let positionUnchanged = true;
 
-			if (Math.abs(e.clientX - initialPos.x) > 5 || Math.abs(e.clientY - initialPos.y) > 5) {
-				mouseStillDown = false;
-				window.removeEventListener("mouseup", onMouseUp);
-				window.removeEventListener("mousemove", onMouseMove);
+		const onPointerUp = () => {
+			mouseStillDown = false;
+			removeEventListeners();
+		};
+
+		const onPointerMove = (e) => {
+			if (Math.abs(e.clientX - x) > 5 || Math.abs(e.clientY - y) > 5) {
+				positionUnchanged = false;
+				removeEventListeners();
 			}
 		};
 
-		window.addEventListener("mouseup", onMouseUp);
-		window.addEventListener("mousemove", onMouseMove);
+		const removeEventListeners = () => {
+			document.removeEventListener("pointerup", onPointerUp, {capture: true});
+			document.removeEventListener("pointermove", onPointerMove, { capture: true });
+		};
+
+		document.addEventListener("pointerup", onPointerUp, {capture: true});
+		document.addEventListener("pointermove", onPointerMove, {capture: true});
 
 		setTimeout(() => {
-			if (x < margin){
-				ViewerService.toggleCameraGestures(false);
-				ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
-			}
-			else if (x > window.innerWidth - margin){
-				ViewerService.toggleCameraGestures(false);
-				ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
-			}
-			else if (y < margin){
-				ViewerService.toggleCameraGestures(false);
-				ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
-			}
-			else if (y > window.innerHeight - margin - 20){ // Allow some more margin here because the widgets at the bottom are taking all the width of the screen
-				ViewerService.toggleCameraGestures(false);
-				ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
+			removeEventListeners();
+
+			if (mouseStillDown && positionUnchanged){
+				if (x < margin){
+					ViewerService.toggleCameraGestures(false);
+					ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
+				}
+				else if (x > window.innerWidth - margin){
+					ViewerService.toggleCameraGestures(false);
+					ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
+				}
+				else if (y < margin){
+					ViewerService.toggleCameraGestures(false);
+					ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
+				}
+				else if (y > window.innerHeight - margin - 20){ // Allow some more margin here because the widgets at the bottom are taking all the width of the screen
+					ViewerService.toggleCameraGestures(false);
+					ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
+				}
 			}
 		}, delay);
 	}
