@@ -285,6 +285,7 @@ export class Application{
 		// On touch devices, users may tap slightly above terrain features, over the sky area
 		// To handle this, we search for coordinates up to 'yPixelsTolerance' pixels below the touch position
 		const yPixelsTolerance = 20;
+		const delay = 5000; // Show the POI for this time (ms)
 		let y = click.position.y;
 		let clickCartographicPosition;
 
@@ -336,26 +337,31 @@ export class Application{
 						}
 
 						ViewerService.refreshScene();
-					}, 5000);
+					}, delay);
 				}
 			}
 		}
 	}
 
 	static #onCanvasMouseDown(click){
-		const delay = 750;
-		const margin = 50;
+		const delay = 750;			// Time (ms) to wait before starting rotation, if conditions remain valid
+		const margin = 50;			// Maximum distance from any screen edge where the click is considered for rotation
+		const bottomMargin = 70;	// Higher bottom margin to account for UI widgets occupying space at the bottom of the screen
 		const x = click.position.x;
 		const y = click.position.y;
 		let mouseStillDown = true;
 		let positionUnchanged = true;
 
-		const onPointerUp = () => {
+		if(x > margin && x < window.innerWidth - margin && y > margin && y < window.innerHeight - bottomMargin){
+			return;
+		}
+
+		const onPointerUp = () => { // Cancel rotation if the pointer is released before the delay expires
 			mouseStillDown = false;
 			removeEventListeners();
 		};
 
-		const onPointerMove = (e) => {
+		const onPointerMove = (e) => { // Cancel rotation if the pointer moves more than 5px from the initial click position before the delay expires
 			if (Math.abs(e.clientX - x) > 5 || Math.abs(e.clientY - y) > 5) {
 				positionUnchanged = false;
 				removeEventListeners();
@@ -374,19 +380,19 @@ export class Application{
 			removeEventListeners();
 
 			if (mouseStillDown && positionUnchanged){
-				if (x < margin){
+				if (x <= margin){
 					ViewerService.toggleCameraGestures(false);
 					ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
 				}
-				else if (x > window.innerWidth - margin){
+				else if (x >= window.innerWidth - margin){
 					ViewerService.toggleCameraGestures(false);
 					ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
 				}
-				else if (y < margin){
+				else if (y <= margin){
 					ViewerService.toggleCameraGestures(false);
 					ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
 				}
-				else if (y > window.innerHeight - margin - 20){ // Allow some more margin here because the widgets at the bottom are taking all the width of the screen
+				else if (y >= window.innerHeight - bottomMargin - 20){
 					ViewerService.toggleCameraGestures(false);
 					ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
 				}

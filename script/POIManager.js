@@ -134,6 +134,20 @@ export class POIManager{
 					backgroundColor: labelColor,
 					backgroundPadding: new Cesium.Cartesian2(3, 3),
 				},
+				
+				billboard: {
+					disableDepthTestDistance: 0,
+					distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
+					pixelOffset: new Cesium.Cartesian2(0, -13),
+					verticalOrigin: Cesium.VerticalOrigin.TOP,
+					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+					//color: labelColor,
+					color: Cesium.Color.ORANGERED,
+					image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAPCAYAAADOKB76AAAAF0lEQVR4nGP8////fwYGBgYmBigYEAYAGHwEGkfF28sAAAAASUVORK5CYII=',
+
+					
+				}
+
 			});
 
 			// Increase label size to improve readability on high DPI displays
