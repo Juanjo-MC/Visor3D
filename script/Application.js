@@ -34,6 +34,7 @@ export class Application{
 		EXTERNAL_DATA_WAYPOINTS: './images/pin_red.svg',
 	});
 
+	// Toast
 	static #toastType = Object.freeze({
 		INFO: 'info',
 		WARNING: 'warning',
@@ -81,7 +82,7 @@ export class Application{
 			await MarkersManager.initialize(ViewerService.viewer);
 			Application.#prepareUI();
 			Application.#bindEventListeners();
-			await Application.#prepareScene();
+			Application.#prepareScene();
 		}
 		catch(err){
 			console.error(err);
@@ -132,7 +133,7 @@ export class Application{
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 	}
 
-	static async #prepareScene(){ // TO DO: refactor. This function is dificult to follow, it should probably be splitted on smaller logical chunks
+	static #prepareScene(){ // TO DO: refactor. This function is dificult to follow, it should probably be splitted on smaller logical chunks
 		// Restore last used cartography
 		let lastCartography;
 
@@ -344,7 +345,7 @@ export class Application{
 	}
 
 	static #onCanvasMouseDown(click){
-		const delay = 750;			// Time (ms) to wait before starting rotation, if conditions remain valid
+		const delay = 500;			// Time (ms) to wait before starting rotation, if conditions remain valid
 		const margin = 50;			// Maximum distance from any screen edge where the click is considered for rotation
 		const bottomMargin = 70;	// Higher bottom margin to account for UI widgets occupying space at the bottom of the screen
 		const x = click.position.x;
@@ -453,7 +454,7 @@ export class Application{
 			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
 		} else{
 			currentHeading = Math.floor(currentCameraPosition.heading);
-			const offset = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // offset to next cardinal clockwise
+			const offset = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // Offset to next cardinal clockwise
 			newHeading = (currentHeading + offset - 90 + 360) % 360;
 		}
 

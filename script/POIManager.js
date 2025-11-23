@@ -12,7 +12,8 @@ export class POIManager{
 		POBLACION: Cesium.Color.fromBytes(253, 246, 228, 190),
 		MASA_DE_AGUA: Cesium.Color.fromBytes(69, 127, 176, 190),
 	});
-	
+
+	// Vertical line for the billboard
 	static #WHITE_LINE_2X15_PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAPCAYAAADOKB76AAAAF0lEQVR4nGP8////fwYGBgYmBigYEAYAGHwEGkfF28sAAAAASUVORK5CYII=';
 	static #WHITE_LINE_3X20_PX = '';
 
@@ -127,7 +128,7 @@ export class POIManager{
 					disableDepthTestDistance: 0,
 					distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
 					scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 20000, 0.4),
-					pixelOffset: new Cesium.Cartesian2(0, -20),
+					pixelOffset: new Cesium.Cartesian2(0, -15),
 					verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
 					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
 					text: poiName,
@@ -136,25 +137,20 @@ export class POIManager{
 					showBackground: true,
 					backgroundColor: labelColor,
 					backgroundPadding: new Cesium.Cartesian2(3, 3),
+					scale: window.devicePixelRatio > 2 ? 1.2 : 1, // On high DPI displays, increase label size to improve readability
 				},
-				
-				billboard: {
-					disableDepthTestDistance: 0,
-					distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
-					pixelOffset: new Cesium.Cartesian2(0, -18),
-					verticalOrigin: Cesium.VerticalOrigin.TOP,
-					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-					//color: labelColor,
-					color: Cesium.Color.BLACK,
-					image: POIManager.#WHITE_LINE_2X15_PX,				
-				}
+
+				//billboard: {
+				//	disableDepthTestDistance: 0,
+				//	distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
+				//	pixelOffset: new Cesium.Cartesian2(0, -1),
+				//	verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+				//	heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+				//	color: Cesium.Color.fromBytes(32, 32, 32, 190),
+				//	image: POIManager.#WHITE_LINE_2X15_PX,
+				//},
 
 			});
-
-			// Increase label size to improve readability on high DPI displays
-			if (window.devicePixelRatio > 2){
-				entity.label.scale = 1.2;
-			}
 		}
 		catch (err){
 			console.warn('Error adding POI ' + poiId + ': ' + err);
