@@ -86,7 +86,7 @@ export class Application{
 		}
 		catch(err){
 			console.error(err);
-			Application.#showToast('Se ha producido un error al inicializar la aplicación: ' + err.message, Application.#toastType.ERROR);
+			Application.#showToast(`Se ha producido un error al inicializar la aplicación: ${err.message}`, Application.#toastType.ERROR);
 		}
 	}
 
@@ -158,8 +158,8 @@ export class Application{
 		if (Utils.isValidLatitude(lat) && Utils.isValidLongitude(lon)){
 
 			if (name === 'null' || name.length === 0){
-				let description = '<a href="geo:' + lat.toFixed(6) + ',' + lon.toFixed(6) + '">' + '<strong>Latitud</strong>: ' + lat.toFixed(6) + '</a><br><br>';
-				description += '<a href="geo:' + lat.toFixed(6) + ',' + lon.toFixed(6) + '">' + '<strong>Longitud</strong>: ' + lon.toFixed(6) + '</a>';
+				let description = `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Latitud</strong>: ${lat.toFixed(6)}</a><br><br>`;
+				description += `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Longitud</strong>: ${lon.toFixed(6)}</a>`;
 				MarkersManager.createMarker(lat, lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
 			}
 			else{
@@ -229,7 +229,7 @@ export class Application{
 
 		const toast = document.createElement('div');
 		toast.classList.add('toast', type);
-		toast.innerHTML = '<i class="toast-icon ' + iconClass + '"></i>' + message;
+		toast.innerHTML = `<i class="toast-icon ${iconClass}"></i>${message}`;
 		container.appendChild(toast);
 		requestAnimationFrame(() => toast.classList.add('show'));
 
@@ -249,7 +249,7 @@ export class Application{
 		if (cameraHeading !== Application.#cameraHeading){
 			Application.#cameraHeading = cameraHeading;
 			const compassHeading = CompassService.getHeading(Math.round(cameraHeading));
-			Application.#domElement.compass.style.transform = 'translate(-50%, -50%) rotate(' + (compassHeading * -1) + 'deg)';
+			Application.#domElement.compass.style.transform = `translate(-50%, -50%) rotate(${compassHeading * -1}deg)`;
 		}
 	}
 
@@ -308,7 +308,7 @@ export class Application{
 
 				if (poiIsLoaded && !poiIsVisible){
 					const poiElevation = await ViewerService.getElevation(poi.lat, poi.lon);
-					const labelText = poi.name + '\n' + poiElevation.toFixed(0) + ' m';
+					const labelText = `${poi.name}\n${poiElevation.toFixed(0)} m`;
 					POIManager.setPoiLabelProperties(poi.id, labelText, true);
 					POIManager.showPOI(poi.id);
 					ViewerService.refreshScene();
@@ -422,11 +422,11 @@ export class Application{
 			}
 		}
 
-		Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;' + lat + '&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;' + lon + '&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;' + altitude + '<span>';
+		Application.#domElement.coordinatesContainer.innerHTML = `<strong>Lat</strong>:&nbsp;${lat}&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;${lon}&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;${altitude}<span>`;
 	}
 
 	static #onSelectedImageryChange(imagery){
-		Application.#showToast('Mostrando ' + imagery.name);
+		Application.#showToast(`Mostrando ${imagery.name}`);
 	}
 
 	static #onDocumentVisibilityChange(){
@@ -454,7 +454,7 @@ export class Application{
 			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
 		} else{
 			currentHeading = Math.floor(currentCameraPosition.heading);
-			const offset = (currentHeading % 90) === 0 ? 0 :  90 - (currentHeading % 90); // Offset to next cardinal clockwise
+			const offset = (currentHeading % 90) === 0 ? 0 : 90 - (currentHeading % 90); // Offset to next cardinal clockwise
 			newHeading = (currentHeading + offset - 90 + 360) % 360;
 		}
 
@@ -476,7 +476,7 @@ export class Application{
 		}
 
 		ViewerService.flyToPosition(currentCameraPosition.lat, currentCameraPosition.lon, currentCameraPosition.altitude, newHeading, currentCameraPosition.pitch);
-		Application.#showToast('Orientando el visor hacia el ' + headingText);
+		Application.#showToast(`Orientando el visor hacia el ${headingText}`);
 	}
 
 	// POIs
@@ -502,11 +502,11 @@ export class Application{
 	}
 
 	static #onMinVisibilityDistanceInput(){
-		Application.#domElement.minVisibilityDistanceLabel.innerHTML = this.value + '&nbsp;km';
+		Application.#domElement.minVisibilityDistanceLabel.innerHTML = `${this.value}&nbsp;km`;
 	}
 
 	static #onMaxVisibilityDistanceInput(){
-		Application.#domElement.maxVisibilityDistanceLabel.innerHTML = this.value + '&nbsp;km';
+		Application.#domElement.maxVisibilityDistanceLabel.innerHTML = `${this.value}&nbsp;km`;
 	}
 
 	static #setPOIsVisibilityRange(){
@@ -549,7 +549,7 @@ export class Application{
 						dataSourceInfo = await ExternalDataService.addGeoJsonDataSource(ViewerService.viewer, {data: jsonData, fileName: file.name}, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					default:
-						Application.#showToast('Tipo de fichero no soportado: ' + fileExtension, Application.#toastType.WARNING);
+						Application.#showToast(`Tipo de fichero no soportado: ${fileExtension}`, Application.#toastType.WARNING);
 						return;
 				}
 
@@ -559,7 +559,7 @@ export class Application{
 			}
 			catch (err){
 				console.error(err);
-				Application.#showToast('Se ha producido un error al procesar el fichero ' + file.name + ': ' + err.message, Application.#toastType.ERROR);
+				Application.#showToast(`Se ha producido un error al procesar el fichero ${file.name}: ${err.message}`, Application.#toastType.ERROR);
 			}
 			finally{
 				this.value = null;
@@ -637,7 +637,7 @@ export class Application{
 		}
 		catch(err){
 			console.error(err);
-			Application.#showToast('Se ha producido un error en el geocodificador: ' + err.message, Application.#toastType.ERROR);
+			Application.#showToast(`Se ha producido un error en el geocodificador: ${err.message}`, Application.#toastType.ERROR);
 		}
 	}
 
@@ -718,25 +718,25 @@ export class Application{
 
 	static async #getUserPositionDescription(position){
 		const altitudeMDT05 = await ViewerService.getElevation(position.coords.latitude, position.coords.longitude);
-		let html = '<a href="geo:' + position.coords.latitude.toFixed(6) + ',' + position.coords.longitude.toFixed(6) + '">' + '<strong>Latitud</strong>: ' + position.coords.latitude.toFixed(6) + '</a><br><br>';
-		html += '<a href="geo:' + position.coords.latitude.toFixed(6) + ',' + position.coords.longitude.toFixed(6) + '">' + '<strong>Longitud</strong>: ' + position.coords.longitude.toFixed(6) + '</a><br><br>';
-		html += '<strong>Precisión (m)</strong>: ' + position.coords.accuracy.toFixed(0) + '<br><br>';
+		let html = `<a href="geo:${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}"><strong>Latitud</strong>: ${position.coords.latitude.toFixed(6)}</a><br><br>`;
+		html += `<a href="geo:${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}"><strong>Longitud</strong>: ${position.coords.longitude.toFixed(6)}</a><br><br>`;
+		html += `<strong>Precisión (m)</strong>: ${position.coords.accuracy.toFixed(0)}<br><br>`;
 
 		if (altitudeMDT05){
-			html += '<strong>Altitud MDT05 (m)</strong>: ' + altitudeMDT05.toFixed(0) + '<br><br>';
+			html += `<strong>Altitud MDT05 (m)</strong>: ${altitudeMDT05.toFixed(0)}<br><br>`;
 		}
 		else if (position.coords.altitude){
-			html += '<strong>Altitud WGS84 (m)</strong>: ' + position.coords.altitude.toFixed(0) + '<br><br>';
+			html += `<strong>Altitud WGS84 (m)</strong>: ${position.coords.altitude.toFixed(0)}<br><br>`;
 		}
 
-		html += '<strong>Fecha</strong>: ' + new Date(position.timestamp).toLocaleDateString('es-ES') + '<br><br>';
-		html += '<strong>Hora</strong>: ' + new Date(position.timestamp).toLocaleTimeString('es-ES') + '<br><br>';
+		html += `<strong>Fecha</strong>: ${new Date(position.timestamp).toLocaleDateString('es-ES')}<br><br>`;
+		html += `<strong>Hora</strong>: ${new Date(position.timestamp).toLocaleTimeString('es-ES')}<br><br>`;
 		return html;
 	}
 
 	static #processGeolocationError(error){
 		console.error(error);
-		Application.#showToast('Se ha producido un error en la geolocalización: ' + error.message, Application.#toastType.ERROR);
+		Application.#showToast(`Se ha producido un error en la geolocalización: ${error.message}`, Application.#toastType.ERROR);
 		Application.#stopGeolocation();
 	}
 
@@ -781,7 +781,7 @@ export class Application{
 		}
 		catch (err){
 			console.error(err);
-			Application.#showToast('Se ha producido un error en el sensor de orientación: ' + err.message, Application.#toastType.ERROR);
+			Application.#showToast(`Se ha producido un error en el sensor de orientación: ${err.message}`, Application.#toastType.ERROR);
 		}
 	}
 }

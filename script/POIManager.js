@@ -153,7 +153,7 @@ export class POIManager{
 			});
 		}
 		catch (err){
-			console.warn('Error adding POI ' + poiId + ': ' + err);
+			console.warn(`Error adding POI ${poiId}: ${err}`);
 		}
 	}
 
@@ -181,8 +181,8 @@ export class POIManager{
 	}
 
 	static #getPOIDescription(lat, lon){
-		let html = '<a href="geo:' + lat.toFixed(6) + ',' + lon.toFixed(6) + '">' + '<strong>Latitud</strong>: ' + lat.toFixed(6) + '</a><br><br>';
-		html += '<a href="geo:' + lat.toFixed(6) + ',' + lon.toFixed(6) + '">' + '<strong>Longitud</strong>: ' + lon.toFixed(6) + '</a>';
+		let html = `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Latitud</strong>: ${lat.toFixed(6)}</a><br><br>`;
+		html += `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Longitud</strong>: ${lon.toFixed(6)}</a>`;
 		return html;
 	}
 }

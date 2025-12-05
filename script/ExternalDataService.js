@@ -136,7 +136,7 @@ export class ExternalDataService{
 			entity.children = entities.filter(e => e.parent === entity.key);
 
 			if (entity.children.length > 0){
-				entity.title = '<strong><i>' + entity.title + '</i></strong>';
+				entity.title = `<strong><i>${entity.title}</i></strong>`;
 				entity.folder = true;
 				entity.expanded = !entity.parent;
 			}

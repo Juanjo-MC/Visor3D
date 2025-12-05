@@ -15,7 +15,7 @@ export class Utils{
 			const response = await fetch(url);
 
 			if (!response.ok){
-				throw new Error('Response status: ' + response.status);
+				throw new Error(`Response status: ${response.status}`);
 			}
 
 			return await response;
