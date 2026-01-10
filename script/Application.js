@@ -561,7 +561,7 @@ export class Application {
 				console.error(err);
 				Application.#showToast(`Se ha producido un error al procesar el fichero ${file.name}: ${err.message}`, Application.#toastType.ERROR);
 			}
-			finally{
+			finally {
 				this.value = null;
 			}
 		}
