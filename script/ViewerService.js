@@ -43,7 +43,7 @@ export class ViewerService {
 		}
 
 		// On mobile devices, cap camera movement to 0.75% of the window size per frame
-		// This prevents high-sensitivity gestures (like fast swipes or drags) from moving the camera too far, providing a more controlled feel
+		// This prevents gestures, like fast swipes or drags, from moving the camera too far, providing a more controlled feel
 		if (navigator.userAgent.includes('Mobile')) {
 			viewer.scene.screenSpaceCameraController.maximumMovementRatio = 0.0075;
 		}
