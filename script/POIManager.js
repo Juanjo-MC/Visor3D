@@ -1,4 +1,4 @@
-export class POIManager{
+export class POIManager {
 	static #poiDataSource = null;
 
 	static poiType = Object.freeze({
@@ -15,62 +15,61 @@ export class POIManager{
 
 	// Vertical line for the billboard
 	static #WHITE_LINE_2X15_PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAPCAYAAADOKB76AAAAF0lEQVR4nGP8////fwYGBgYmBigYEAYAGHwEGkfF28sAAAAASUVORK5CYII=';
-	static #WHITE_LINE_3X20_PX = '';
 
-	static async initialize(viewer){
+	static async initialize(viewer) {
 		POIManager.#poiDataSource = await viewer.dataSources.add(new Cesium.CustomDataSource('poiDataSource'));
 	}
 
-	static getPOIType(poiId){
-		if (poiId && poiId.startsWith(POIManager.poiType.CUMBRE)){
+	static getPOIType(poiId) {
+		if (poiId && poiId.startsWith(POIManager.poiType.CUMBRE)) {
 			return POIManager.poiType.CUMBRE;
 		}
-		else if (poiId && poiId.startsWith(POIManager.poiType.POBLACION)){
+		else if (poiId && poiId.startsWith(POIManager.poiType.POBLACION)) {
 			return POIManager.poiType.POBLACION;
 		}
-		else if (poiId && poiId.startsWith(POIManager.poiType.MASA_DE_AGUA)){
+		else if (poiId && poiId.startsWith(POIManager.poiType.MASA_DE_AGUA)) {
 			return POIManager.poiType.MASA_DE_AGUA;
 		}
 
 		return null;
 	}
 
-	static #getPOIEntity(poiId){
+	static #getPOIEntity(poiId) {
 		return POIManager.#poiDataSource.entities.getById(poiId);
 	}
 
-	static poiIsLoaded(poiId){
+	static poiIsLoaded(poiId) {
 		const poiEntity = POIManager.#getPOIEntity(poiId);
 		return poiEntity ? true : false;
 	}
 
-	static poiIsVisible(poiId){
+	static poiIsVisible(poiId) {
 		const poiEntity = POIManager.#getPOIEntity(poiId);
 		return poiEntity ? poiEntity.show : false;
 	}
 
-	static showPOI(poiId){
+	static showPOI(poiId) {
 		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.show = true;
 	}
 
-	static hidePOI(poiId){
+	static hidePOI(poiId) {
 		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.show = false;
 	}
 
-	static setPoiLabelProperties(poiId, labelText, removeScaleByDistance, visibilityDistance = null){
+	static setPoiLabelProperties(poiId, labelText, removeScaleByDistance, visibilityDistance = null) {
 		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.label.text = labelText;
 
-		if (removeScaleByDistance){
+		if (removeScaleByDistance) {
 			poiEntity.label.scaleByDistance = null;
 		}
 		else{
 			poiEntity.label.scaleByDistance = new Cesium.NearFarScalar(100, 1.5, 20000, 0.4)
 		}
 
-		if (visibilityDistance === null){
+		if (visibilityDistance === null) {
 			poiEntity.label.distanceDisplayCondition = null;
 		}
 		else{
@@ -88,23 +87,23 @@ export class POIManager{
 	}
 	*/
 
-	static addPOIsToViewer(poisList, renderingOptions){
+	static addPOIsToViewer(poisList, renderingOptions) {
 		POIManager.#poiDataSource.entities.suspendEvents();
 
-		for (const poi of poisList){
+		for (const poi of poisList) {
 			const poiType = POIManager.getPOIType(poi.id)
 			let labelColor;
 			let poiVisible;
 
-			if (poiType === POIManager.poiType.CUMBRE){
+			if (poiType === POIManager.poiType.CUMBRE) {
 				labelColor = POIManager.#poiLabelColor.CUMBRE;
 				poiVisible = renderingOptions.cumbresVisible;
 			}
-			else if (poiType === POIManager.poiType.POBLACION){
+			else if (poiType === POIManager.poiType.POBLACION) {
 				labelColor = POIManager.#poiLabelColor.POBLACION;
 				poiVisible = renderingOptions.poblacionesVisible;
 			}
-			else if (poiType === POIManager.poiType.MASA_DE_AGUA){
+			else if (poiType === POIManager.poiType.MASA_DE_AGUA) {
 				labelColor = POIManager.#poiLabelColor.MASA_DE_AGUA;
 				poiVisible = renderingOptions.masasDeAguaVisible;
 			}
@@ -115,7 +114,7 @@ export class POIManager{
 		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static addPOIToViewer(poiId, poiName, poiLat, poiLon, minVisibilityDistance, maxVisibilityDistance, labelColor, visible){
+	static addPOIToViewer(poiId, poiName, poiLat, poiLon, minVisibilityDistance, maxVisibilityDistance, labelColor, visible) {
 		try{
 			const entity = POIManager.#poiDataSource.entities.add({
 				id: poiId,
@@ -152,22 +151,22 @@ export class POIManager{
 
 			});
 		}
-		catch (err){
+		catch (err) {
 			console.warn(`Error adding POI ${poiId}: ${err}`);
 		}
 	}
 
-	static removePOIsFromViewer(poisList){
+	static removePOIsFromViewer(poisList) {
 		POIManager.#poiDataSource.entities.suspendEvents();
 		poisList.forEach(poi => POIManager.#poiDataSource.entities.removeById(poi.id));
 		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static setPOIsVisibility(poiType, visible){
+	static setPOIsVisibility(poiType, visible) {
 		POIManager.#poiDataSource.entities.suspendEvents();
 
-		for (const poi of POIManager.#poiDataSource.entities.values){
-			if (poi.id.startsWith(poiType)){
+		for (const poi of POIManager.#poiDataSource.entities.values) {
+			if (poi.id.startsWith(poiType)) {
 				poi.show = visible;
 			}
 		}
@@ -175,12 +174,12 @@ export class POIManager{
 		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static setPOIsVisibilityRange(visibilityRangeMin, visibilityRangeMax){
+	static setPOIsVisibilityRange(visibilityRangeMin, visibilityRangeMax) {
 		const distanceDisplayCondition = new Cesium.DistanceDisplayCondition(visibilityRangeMin, visibilityRangeMax);
 		POIManager.#poiDataSource.entities.values.forEach(entity => entity.label.distanceDisplayCondition = distanceDisplayCondition);
 	}
 
-	static #getPOIDescription(lat, lon){
+	static #getPOIDescription(lat, lon) {
 		let html = `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Latitud</strong>: ${lat.toFixed(6)}</a><br><br>`;
 		html += `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Longitud</strong>: ${lon.toFixed(6)}</a>`;
 		return html;

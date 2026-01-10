@@ -1,11 +1,11 @@
-export class MarkersManager{
+export class MarkersManager {
 	static #markersDataSource = null;
 
-	static async initialize(viewer){
+	static async initialize(viewer) {
 		MarkersManager.#markersDataSource = await viewer.dataSources.add(new Cesium.CustomDataSource('markersDataSource'));
 	}
 
-	static createMarker(lat, lon, name, description, markerFilePath){
+	static createMarker(lat, lon, name, description, markerFilePath) {
 		const entity = MarkersManager.#markersDataSource.entities.add({
 			position: Cesium.Cartesian3.fromDegrees(lon, lat),
 			name: name,
@@ -17,18 +17,18 @@ export class MarkersManager{
 		return entity.id;
 	}
 
-	static updateMarker(entityId, lat, lon, name, description){
+	static updateMarker(entityId, lat, lon, name, description) {
 		const entity = MarkersManager.#markersDataSource.entities.getById(entityId);
 		entity.position = Cesium.Cartesian3.fromDegrees(lon, lat);
 		entity.name = name;
 		entity.description = description;
 	}
 
-	static removeMarker(entityId){
+	static removeMarker(entityId) {
 		MarkersManager.#markersDataSource.entities.removeById(entityId);
 	}
 
-	static addCircleToMarker(entityId, radius, material, fill){
+	static addCircleToMarker(entityId, radius, material, fill) {
 		const entity = MarkersManager.#markersDataSource.entities.getById(entityId);
 		entity.ellipse = new Cesium.EllipseGraphics({
 			semiMajorAxis: radius,
@@ -38,7 +38,7 @@ export class MarkersManager{
 		});
 	}
 
-	static updateMarkerCircle(entityId, radius, material, fill){
+	static updateMarkerCircle(entityId, radius, material, fill) {
 		const entity = MarkersManager.#markersDataSource.entities.getById(entityId);
 		entity.ellipse.semiMajorAxis = radius;
 		entity.ellipse.semiMinorAxis = radius;
@@ -46,7 +46,7 @@ export class MarkersManager{
 		entity.ellipse.fill = fill;
 	}
 
-	static #setBillboardProperties(entity, markerFilePath){
+	static #setBillboardProperties(entity, markerFilePath) {
 		entity.billboard = new Cesium.BillboardGraphics({
 			disableDepthTestDistance: 0,
 			scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 20000, 0.4),

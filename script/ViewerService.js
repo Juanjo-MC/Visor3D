@@ -1,4 +1,4 @@
-export class ViewerService{
+export class ViewerService {
 	static #viewer;
 	static #canvasEventHandler;
 
@@ -16,11 +16,11 @@ export class ViewerService{
 	static #rotationSpeed = 0	// Radians per second
 	static #lastFrameTime = null;
 
-	static get viewer(){
+	static get viewer() {
 		return ViewerService.#viewer;
 	}
 
-	static async initialize(viewerContainer){
+	static async initialize(viewerContainer) {
 		const viewer = new Cesium.Viewer(viewerContainer, {
 			imageryProvider: false, // This is necessary to prevent the viewer from downloading tiles from Bing
 			imageryProviderViewModels: ViewerService.#getImageryProviders(),
@@ -38,8 +38,14 @@ export class ViewerService{
 		viewer.baseLayerPicker.viewModel.terrainProviderViewModels.removeAll();
 
 		// This will increase image sharpness on high DPI displays
-		if (window.devicePixelRatio > 2){
+		if (window.devicePixelRatio > 2) {
 			viewer.resolutionScale = 2;
+		}
+
+		// On mobile devices, cap camera movement to 0.75% of the window size per frame
+		// This prevents high-sensitivity gestures (like fast swipes or drags) from moving the camera too far, providing a more controlled feel
+		if (navigator.userAgent.includes('Mobile')) {
+			viewer.scene.screenSpaceCameraController.maximumMovementRatio = 0.0075;
 		}
 
 		viewer.scene.globe.maximumScreenSpaceError = 1.5;
@@ -53,7 +59,7 @@ export class ViewerService{
 		ViewerService.#viewer = viewer;
 	}
 
-	static #getImageryProviders(){
+	static #getImageryProviders() {
 		const imageryViewModels = [];
 
 		// PNOA
@@ -62,7 +68,7 @@ export class ViewerService{
 			tooltip: 'Plan Nacional de Ortofotografía Aérea (máxima actualidad)',
 			iconUrl: 'https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/15/15945/20765.jpeg',
 
-			creationFunction: function(){
+			creationFunction: () => {
 				return new Cesium.UrlTemplateImageryProvider({
 					url: 'https://tms-pnoa-ma.idee.es/1.0.0/pnoa-ma/{z}/{x}/{reverseY}.jpeg',
 					minimumLevel: 1,
@@ -78,7 +84,7 @@ export class ViewerService{
 			tooltip: 'Mapa Topográfico Nacional',
 			iconUrl: 'https://tms-mapa-raster.ign.es/1.0.0/mapa-raster/15/15945/20765.jpeg',
 
-			creationFunction: function(){
+			creationFunction: () => {
 				return new Cesium.UrlTemplateImageryProvider({
 					url: 'https://tms-mapa-raster.ign.es/1.0.0/mapa-raster/{z}/{x}/{reverseY}.jpeg',
 					minimumLevel: 5,
@@ -94,7 +100,7 @@ export class ViewerService{
 			tooltip: 'Mapa base',
 			iconUrl: 'https://tms-ign-base.idee.es/1.0.0/IGNBaseTodo/15/15945/20765.jpeg',
 
-			creationFunction: function(){
+			creationFunction: () => {
 				return new Cesium.UrlTemplateImageryProvider({
 					url: 'https://tms-ign-base.idee.es/1.0.0/IGNBaseTodo/{z}/{x}/{reverseY}.jpeg',
 					minimumLevel: 5,
@@ -110,7 +116,7 @@ export class ViewerService{
 			tooltip: 'Mapa LIDAR',
 			iconUrl: 'https://wmts-mapa-lidar.idee.es/lidar?Layer=EL.GridCoverageDSM&Style=default&TileMatrixSet=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/png&TileMatrix=15&TileCol=15945&TileRow=12002',
 
-			creationFunction: function(){
+			creationFunction: () => {
 				return new Cesium.UrlTemplateImageryProvider({
 					url: 'https://wmts-mapa-lidar.idee.es/lidar?Layer=EL.GridCoverageDSM&Style=default&TileMatrixSet=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/png&TileMatrix={z}&TileCol={x}&TileRow={y}',
 					minimumLevel: 5,
@@ -120,45 +126,29 @@ export class ViewerService{
 			}
 		}));
 
-		// OpenStreetMap
-/* 		imageryViewModels.push(new Cesium.ProviderViewModel({
-			name: 'OSM',
-			tooltip: 'OpenStreetMap',
-			iconUrl: 'https://tile.openstreetmap.org/15/15945/12002.png',
-
-			creationFunction: function(){
-				return new Cesium.UrlTemplateImageryProvider({
-					url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-					minimumLevel: 0,
-					maximumLevel: 19,
-					hasAlphaChannel: false,
-				});
-			}
-		})); */
-
 		return imageryViewModels;
 	}
 
-	static async #getTerrainProvider(){
+	static async #getTerrainProvider() {
 		return await Cesium.CesiumTerrainProvider.fromUrl("https://qm-mdt.idee.es/1.0.0/terrain", {
 			credit: new Cesium.Credit("<a href='https://www.ign.es/web/ign/portal/qsm-cnig' target='_blank'>Instituto Geográfico Nacional (IGN)</a>"),
 		})
 	}
 
-	static get currentImageryName(){
+	static get currentImageryName() {
 		return ViewerService.#viewer.baseLayerPicker.viewModel.selectedImagery.name;
 	}
 
-	static setImagery(imageryName){
+	static setImagery(imageryName) {
 		const models = ViewerService.#viewer.baseLayerPicker.viewModel.imageryProviderViewModels;
 		const match = models.find(model => model.name === imageryName);
 
-		if (match){
+		if (match) {
 			ViewerService.#viewer.baseLayerPicker.viewModel.selectedImagery = match;
 		}
 	}
 
-	static flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch, duration = 5){
+	static flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch, duration = 5) {
 		ViewerService.#viewer.camera.flyTo({
 			destination: Cesium.Cartesian3.fromDegrees(lon, lat, cameraAltitude),
 			duration: duration,
@@ -172,18 +162,18 @@ export class ViewerService{
 		});
 	}
 
-	static flyToDataSource(dataSource){
+	static flyToDataSource(dataSource) {
 		ViewerService.#viewer.flyTo(dataSource);
 		ViewerService.#viewer.scene.requestRender();
 	}
 
-	static async getElevation(lat, lon){
+	static async getElevation(lat, lon) {
 		const position = [Cesium.Cartographic.fromDegrees(lon, lat)];
 		await Cesium.sampleTerrainMostDetailed(ViewerService.#viewer.terrainProvider, position);
 		return position[0].height;
 	}
 
-	static getCameraPosition(){ // {lat, lon, altitude, heading, pitch}
+	static getCameraPosition() { // {lat, lon, altitude, heading, pitch}
 		const camera = ViewerService.#viewer.camera;
 
 		const cameraPosition = {
@@ -197,7 +187,7 @@ export class ViewerService{
 		return cameraPosition;
 	}
 
-	static setCameraHeading(heading){
+	static setCameraHeading(heading) {
 		const currentCameraPosition = ViewerService.#viewer.camera.positionWC;
 		const currentCameraPitch = ViewerService.#viewer.camera.pitch;
 
@@ -211,15 +201,15 @@ export class ViewerService{
 		});
 	}
 
-	static getCartographicScreenPosition(windowPosition){ // {lat, lon}
+	static getCartographicScreenPosition(windowPosition) { // {lat, lon}
 		const scene = ViewerService.#viewer.scene;
 		const globe = scene.globe;
 		const ray = scene.camera.getPickRay(windowPosition);
 
-		if (ray){
+		if (ray) {
 			const cartesian = globe.pick(ray, scene);
 
-			if (cartesian){
+			if (cartesian) {
 				const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian);
 				return {
 					lat: Cesium.Math.toDegrees(cartographicPosition.latitude),
@@ -229,23 +219,12 @@ export class ViewerService{
 		}
 	}
 
-	static isCursorOverObject(windowPosition){
-		const pickedObject = ViewerService.#viewer.scene.pick(windowPosition);
-
-		if (!pickedObject){
-			return false;
-		}
-		else{
-			return true;
-		}
-	}
-
-	static refreshScene(){
+	static refreshScene() {
 		ViewerService.viewer.scene.requestRender();
 	}
 
-	static startRotation(axis, direction, speed = 10){
-		if (ViewerService.#isRotating){
+	static startRotation(axis, direction, speed = 10) {
+		if (ViewerService.#isRotating) {
 			return;
 		}
 
@@ -254,7 +233,7 @@ export class ViewerService{
 		ViewerService.#lastFrameTime = performance.now();
 
 		const step = (time) => {
-			if (!ViewerService.#isRotating){
+			if (!ViewerService.#isRotating) {
 				return;
 			}
 
@@ -264,13 +243,13 @@ export class ViewerService{
 			let newHeading = camera.heading;
 			let newPitch = camera.pitch;
 
-			if (axis === ViewerService.rotationAxis.HEADING){
+			if (axis === ViewerService.rotationAxis.HEADING) {
 				newHeading += direction * ViewerService.#rotationSpeed * delta;
 			}
-			else if (axis === ViewerService.rotationAxis.PITCH){
+			else if (axis === ViewerService.rotationAxis.PITCH) {
 				newPitch += direction * ViewerService.#rotationSpeed * delta;
 
-				if (newPitch < -Math.PI / 2.0 || newPitch > Math.PI / 2.0){
+				if (newPitch < -Math.PI / 2.0 || newPitch > Math.PI / 2.0) {
 					ViewerService.stopRotation();
 					return;
 				}
@@ -292,13 +271,13 @@ export class ViewerService{
 		requestAnimationFrame(step);
 	}
 
-	static stopRotation(){
+	static stopRotation() {
 		ViewerService.#isRotating = false;
 		ViewerService.#rotationSpeed = 0;
 		ViewerService.#lastFrameTime = null;
 	}
 
-	static toggleCameraGestures(enabled){
+	static toggleCameraGestures(enabled) {
 		const controller = ViewerService.#viewer.scene.screenSpaceCameraController;
 		controller.enableRotate = enabled;
 		controller.enableTranslate = enabled;
@@ -308,39 +287,39 @@ export class ViewerService{
 	}
 
 	// Event handlers
-	static #getCanvasEventHandler(){
-		if (!ViewerService.#canvasEventHandler){
+	static #getCanvasEventHandler() {
+		if (!ViewerService.#canvasEventHandler) {
 			ViewerService.#canvasEventHandler = new Cesium.ScreenSpaceEventHandler(ViewerService.#viewer.scene.canvas);
 		}
 
 		return ViewerService.#canvasEventHandler;
 	}
 
-	static onCameraChange(callbackFunction){
+	static onCameraChange(callbackFunction) {
 		ViewerService.#viewer.camera.changed.addEventListener(callbackFunction);
 	}
 
-	static onCameraStopMove(callbackFunction){
+	static onCameraStopMove(callbackFunction) {
 		ViewerService.#viewer.camera.moveEnd.addEventListener(callbackFunction);
 	}
 
-	static onCanvasClick(callbackFunction){
+	static onCanvasClick(callbackFunction) {
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 
-	static onCanvasMouseDown(callbackFunction){
+	static onCanvasMouseDown(callbackFunction) {
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_DOWN);
 	}
 
-	static onCanvasMouseUp(callbackFunction){
+	static onCanvasMouseUp(callbackFunction) {
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_UP);
 	}
 
-	static onCanvasMouseMove(callbackFunction){
+	static onCanvasMouseMove(callbackFunction) {
 		ViewerService.#getCanvasEventHandler().setInputAction((movement) => callbackFunction(movement), Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 	}
 
-	static onSelectedImageryChange(callbackFunction){
+	static onSelectedImageryChange(callbackFunction) {
 		Cesium.knockout.getObservable(ViewerService.#viewer.baseLayerPicker.viewModel, 'selectedImagery').subscribe(callbackFunction);
 	}
 }
