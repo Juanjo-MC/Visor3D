@@ -6,7 +6,7 @@ export class DeviceHeadingTracker {
 	static #previousHeading = null;
 
 	static async start(onHeadingChange, cameraHeading) {
-		try{
+		try {
 			if (location.protocol !== 'https:') {
 				throw new Error('This functionality requires HTTPS');
 			}
@@ -22,7 +22,7 @@ export class DeviceHeadingTracker {
 			else if ('DeviceOrientationEvent' in window) {
 				DeviceHeadingTracker.#startDeviceOrientationFallback();
 			}
-			else{
+			else {
 				throw new Error('Orientation sensor not supported on this device');
 			}
 		}
@@ -89,7 +89,7 @@ export class DeviceHeadingTracker {
 		else if (event.alpha !== null) {
 			heading = 360 - event.alpha;
 		}
-		else{
+		else {
 			return;
 		}
 

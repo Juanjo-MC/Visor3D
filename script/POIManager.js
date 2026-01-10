@@ -65,14 +65,14 @@ export class POIManager {
 		if (removeScaleByDistance) {
 			poiEntity.label.scaleByDistance = null;
 		}
-		else{
+		else {
 			poiEntity.label.scaleByDistance = new Cesium.NearFarScalar(100, 1.5, 20000, 0.4)
 		}
 
 		if (visibilityDistance === null) {
 			poiEntity.label.distanceDisplayCondition = null;
 		}
-		else{
+		else {
 			poiEntity.label.distanceDisplayCondition = new Cesium.DistanceDisplayCondition(visibilityDistance.min, visibilityDistance.max);
 		}
 	}
@@ -115,7 +115,7 @@ export class POIManager {
 	}
 
 	static addPOIToViewer(poiId, poiName, poiLat, poiLon, minVisibilityDistance, maxVisibilityDistance, labelColor, visible) {
-		try{
+		try {
 			const entity = POIManager.#poiDataSource.entities.add({
 				id: poiId,
 				name: poiName,

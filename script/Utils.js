@@ -11,7 +11,7 @@ export class Utils {
 	}
 
 	static async #getData(url) {
-		try{
+		try {
 			const response = await fetch(url);
 
 			if (!response.ok) {

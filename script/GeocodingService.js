@@ -59,7 +59,7 @@ export class GeocodingService {
 	}
 
 	static async #getJSONData(url) {
-		try{
+		try {
 			const response = await fetch(url);
 
 			if (!response.ok) {

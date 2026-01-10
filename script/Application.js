@@ -75,7 +75,7 @@ export class Application {
 	});
 
 	static async initialize() {
-		try{
+		try {
 			POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
 			await ViewerService.initialize(Application.#domElement.viewerContainer.id);
 			await POIManager.initialize(ViewerService.viewer);
@@ -95,7 +95,7 @@ export class Application {
 			Application.#domElement.coordinatesContainer.style.display = 'flex';
 			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----<span>';
 		}
-		else{ // Panorama button only visible on mobile devices
+		else { // Panorama button only visible on mobile devices
 			Application.#domElement.btnPanorama.style.display = 'flex';
 		}
 	}
@@ -137,7 +137,7 @@ export class Application {
 		// Restore last used cartography
 		let lastCartography;
 
-		try{
+		try {
 			lastCartography = window.localStorage.getItem('lastCartography');
 		}
 		catch (err) {
@@ -162,15 +162,15 @@ export class Application {
 				description += `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Longitud</strong>: ${lon.toFixed(6)}</a>`;
 				MarkersManager.createMarker(lat, lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
 			}
-			else{
+			else {
 				POIManager.addPOIToViewer(null, name, lat, lon, 10, 50000, Cesium.Color.fromBytes(226, 255, 226, 190), true);
 			}
 		}
-		else{
+		else {
 			// check for saved camera position
 			let jsonSavedCameraPosition;
 
-			try{
+			try {
 				jsonSavedCameraPosition = window.localStorage.getItem('lastCameraPosition');
 			}
 			catch (err) {
@@ -185,7 +185,7 @@ export class Application {
 				cameraHeading = savedCameraPosition.heading;
 				cameraPitch = savedCameraPosition.pitch;
 			}
-			else{
+			else {
 				// no coordinates have been received or they are invalid and there is no previous position saved in the local storage, display the map in the default position
 				lat = Application.#FALLBACK_MAP_CENTER_LAT;
 				lon = Application.#FALLBACK_MAP_CENTER_LON;
@@ -430,7 +430,7 @@ export class Application {
 
 	static #onDocumentVisibilityChange() { // Save view state
 		if (document.hidden) {
-			try{
+			try {
 				window.localStorage.setItem('lastCameraPosition', JSON.stringify(ViewerService.getCameraPosition()));
 				window.localStorage.setItem('lastCartography', ViewerService.currentImageryName);
 			}
@@ -451,7 +451,8 @@ export class Application {
 		if (isRightHalf) {
 			currentHeading = Math.ceil(currentCameraPosition.heading);
 			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
-		} else{
+		}
+		else {
 			currentHeading = Math.floor(currentCameraPosition.heading);
 			const offset = (currentHeading % 90) === 0 ? 0 : 90 - (currentHeading % 90); // Offset to next cardinal clockwise
 			newHeading = (currentHeading + offset - 90 + 360) % 360;
@@ -529,7 +530,7 @@ export class Application {
 		const file = this.files[0];
 
 		if (file) {
-			try{
+			try {
 				const arr = file.name.split('.');
 				const fileExtension = arr[arr.length - 1].toLowerCase();
 				let dataSourceInfo;
@@ -609,7 +610,7 @@ export class Application {
 	}
 
 	static async #onBtnSearchClick() {
-		try{
+		try {
 			const searchBox = Application.#domElement.searchBox;
 			const searchResultsList = Application.#domElement.searchResultsList;
 
@@ -622,7 +623,7 @@ export class Application {
 					Application.#showToast('No se han encontrado resultados');
 					searchBox.value = '';
 				}
-				else{
+				else {
 					for (const result of searchResults) {
 						const option = new Option(result.address, result.id);
 						option.setAttribute('type', result.type);
@@ -666,7 +667,7 @@ export class Application {
 
 	// Geolocation
 	static #onBtnUserPositionClick() {
-		try{
+		try {
 
 			Device.vibrate();
 			const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
@@ -677,7 +678,7 @@ export class Application {
 				Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
 				Application.#showToast('Geolocalización activada');
 			}
-			else{
+			else {
 				Application.#stopGeolocation();
 				Application.#showToast('Geolocalización desactivada');
 			}
@@ -699,7 +700,7 @@ export class Application {
 				ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
 			}
 		}
-		else{
+		else {
 			MarkersManager.updateMarker(Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
 			MarkersManager.updateMarkerCircle(Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
 			ViewerService.refreshScene();
@@ -754,7 +755,7 @@ export class Application {
 
 	// Panorama
 	static async #onBtnPanoramaClick() {
-		try{
+		try {
 			Device.vibrate();
 			const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
 
@@ -765,7 +766,7 @@ export class Application {
 				Application.#domElement.compass.removeEventListener('dblclick', Application.#onCompassDoubleClick);
 				Application.#showToast('Sensor de orientación activado');
 			}
-			else{
+			else {
 				DeviceHeadingTracker.stop();
 				Application.#domElement.btnPanorama.setAttribute('active', 'false');
 				Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
