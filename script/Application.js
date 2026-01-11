@@ -47,7 +47,7 @@ export class Application {
 	static #geolocationMarkerId = null;				// Entity Id of geolocation position pin
 	static #isGeolocationStopping = false;			// Prevents a race condition when stopping geolocation before the first position update
 
-	//DOM elements
+	// DOM elements
 	static #domElement = Object.freeze({
 		viewerContainer: document.getElementById('viewerContainer'),
 		toastContainer: document.getElementById('toastContainer'),
