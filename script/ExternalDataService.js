@@ -20,7 +20,7 @@ export class ExternalDataService {
 		}
 
 		const dataSourceName = dataSource.name ? dataSource.name : dataSourceInfo.fileName
-		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id };
+		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id};
 		return dataSourceReturnInfo;
 	}
 
@@ -44,7 +44,7 @@ export class ExternalDataService {
 		}
 
 		const dataSourceName = dataSource.name ? dataSource.name : dataSourceInfo.fileName
-		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id };
+		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id};
 		return dataSourceReturnInfo;
 	}
 
@@ -69,7 +69,7 @@ export class ExternalDataService {
 		}
 
 		const dataSourceName = dataSource.name ? dataSource.name : dataSourceInfo.fileName
-		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id };
+		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id};
 		return dataSourceReturnInfo;
 	}
 

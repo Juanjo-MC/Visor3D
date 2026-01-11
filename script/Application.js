@@ -372,7 +372,7 @@ export class Application {
 
 		const removeEventListeners = () => {
 			document.removeEventListener("pointerup", onPointerUp, {capture: true});
-			document.removeEventListener("pointermove", onPointerMove, { capture: true });
+			document.removeEventListener("pointermove", onPointerMove, {capture: true});
 		};
 
 		document.addEventListener("pointerup", onPointerUp, {capture: true});
