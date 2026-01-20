@@ -53,7 +53,7 @@ export class DeviceHeadingTracker {
 		}
 	}
 
-/* 	static #startAbsoluteOrientationSensor() {
+	static #startAbsoluteOrientationSensor() {
 		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
 
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
@@ -66,48 +66,6 @@ export class DeviceHeadingTracker {
 			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
 			let heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
 			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
-			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
-			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
-		});
-
-		DeviceHeadingTracker.#orientationSensor.start();
-	} */
-
-	static #startAbsoluteOrientationSensor() {
-		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
-
-		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
-			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
-
-			if (!q) {
-				return;
-			}
-
-			const quat = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
-			const rot = Cesium.Matrix3.fromQuaternion(quat);
-
-			// Device forward vector (-Z)
-			const forwardWorld = Cesium.Matrix3.multiplyByVector(
-				rot,
-				new Cesium.Cartesian3(0, 0, -1),
-				new Cesium.Cartesian3()
-			);
-
-			// Project onto world horizontal plane (Z-up)
-			forwardWorld.z = 0;
-
-			// If device is vertical, heading is undefined → ignore
-			if (Cesium.Cartesian3.magnitudeSquared(forwardWorld) < 1e-6) {
-				return;
-			}
-
-			Cesium.Cartesian3.normalize(forwardWorld, forwardWorld);
-
-			// World heading: X = East, Y = North
-			let heading = Math.atan2(forwardWorld.x, forwardWorld.y);
-			heading = Cesium.Math.toDegrees(heading);
-			heading = (heading + 360) % 360;
-
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
@@ -126,10 +84,10 @@ export class DeviceHeadingTracker {
 			heading = event.webkitCompassHeading;
 		}
 		else if (event.absolute && event.alpha !== null) {
-			heading = 360 - event.alpha;
+			heading = event.alpha;
 		}
 		else if (event.alpha !== null) {
-			heading = 360 - event.alpha;
+			heading = event.alpha;
 		}
 		else {
 			return;
