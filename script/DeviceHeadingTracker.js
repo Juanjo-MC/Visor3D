@@ -83,47 +83,55 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
-			// Cesium quaternion
 			const quat = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
-
-			// Convert quaternion → rotation matrix
 			const rotationMatrix = Cesium.Matrix3.fromQuaternion(quat);
 
-			/*
-			* We take the device's forward vector and project it onto the horizontal plane.
-			* For AbsoluteOrientationSensor, the forward direction is -Z in device space.
-			*/
+			// Select device forward axis depending on screen orientation
+			const angle = window.screen?.orientation?.angle ?? 0;
+			let deviceForward;
+
+			switch (angle) {
+				case 90:   // landscape left
+					deviceForward = new Cesium.Cartesian3(1, 0, 0);
+					break;
+				case 270:  // landscape right
+					deviceForward = new Cesium.Cartesian3(-1, 0, 0);
+					break;
+				case 180:  // upside-down portrait
+					deviceForward = new Cesium.Cartesian3(0, 0, 1);
+					break;
+				case 0:    // portrait
+				default:
+					deviceForward = new Cesium.Cartesian3(0, 0, -1);
+				break;
+			}
+
+			// Rotate device forward vector into world space
 			const forward = Cesium.Matrix3.multiplyByVector(
 				rotationMatrix,
-				new Cesium.Cartesian3(0, 0, -1),
+				deviceForward,
 				new Cesium.Cartesian3()
 			);
 
-			// Project onto horizontal plane (remove vertical component)
+			// Project onto horizontal plane
 			forward.z = 0;
 
-			// If device is pointing straight up/down, ignore update
 			if (Cesium.Cartesian3.magnitudeSquared(forward) < 1e-6) {
 				return;
 			}
 
 			Cesium.Cartesian3.normalize(forward, forward);
 
-			// Heading from projected forward vector
+			// Heading from projected vector
 			let heading = Math.atan2(forward.x, forward.y);
 			heading = Cesium.Math.toDegrees(heading);
-
-			// Apply screen orientation correction
-			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
-
-			// Apply your low-pass filter
+			heading = (heading + 360) % 360;
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
 
 		DeviceHeadingTracker.#orientationSensor.start();
 	}
-
 
 	static #startDeviceOrientationFallback() {
 		window.addEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent, true);
