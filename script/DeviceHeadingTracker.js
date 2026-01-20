@@ -4,6 +4,8 @@ export class DeviceHeadingTracker {
 	static #frequency = 60;				// Sampling frequency for the AbsoluteOrientationSensor (Hz)
 	static #filterAlpha = 0.96;			// Alpha coefficient for the low-pass filter
 	static #previousHeading = null;
+	
+	static #userInformed = false;
 
 	static async start(onHeadingChange, cameraHeading) {
 		try {
@@ -16,7 +18,7 @@ export class DeviceHeadingTracker {
 			// Set #previousHeading to the camera’s current heading to start the rotation from the correct angle
 			DeviceHeadingTracker.#previousHeading = cameraHeading;
 
-			if ('AbsoluteOrientationSensor' in window) {
+			if ('__AbsoluteOrientationSensor' in window) {
 				DeviceHeadingTracker.#startAbsoluteOrientationSensor();
 			}
 			else if ('DeviceOrientationEvent' in window) {
@@ -79,20 +81,31 @@ export class DeviceHeadingTracker {
 
 	static #handleOrientationEvent(event) {
 		let heading;
-
+		let eventAbsolute;
+		let deviceHeading;
+		
 		if (event.webkitCompassHeading !== undefined) {
-			heading = event.webkitCompassHeading;
+			heading = event.webkitCompassHeading;			
 		}
 		else if (event.absolute && event.alpha !== null) {
 			heading = 360 - event.alpha;
+			eventAbsolute = true;
+			deviceHeading = event.alpha;
 		}
 		else if (event.alpha !== null) {
 			heading = 360 - event.alpha;
+			eventAbsolute = false;
+			deviceHeading = event.alpha;
 		}
 		else {
 			return;
 		}
-
+			
+		if (!DeviceHeadingTracker.#userInformed) {
+			DeviceHeadingTracker.#userInformed = true;
+			window.alert(`Absolute: ${eventAbsolute}, Heading: ${deviceHeading}`);
+		}
+			
 		heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
 		const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 		DeviceHeadingTracker.#onHeadingChange(filteredHeading);
