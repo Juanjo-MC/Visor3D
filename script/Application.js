@@ -736,6 +736,7 @@ export class Application {
 		console.error(error);
 		Application.#showToast(`Se ha producido un error en la geolocalización: ${error.message}`, Application.#toastType.ERROR);
 		Application.#stopGeolocation();
+		Application.#showToast('Geolocalización desactivada');
 	}
 
 	static #stopGeolocation() {

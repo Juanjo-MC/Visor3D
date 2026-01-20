@@ -8,7 +8,7 @@ export class DeviceHeadingTracker {
 	static async start(onHeadingChange, cameraHeading) {
 		try {
 			if (location.protocol !== 'https:') {
-				throw new Error('This functionality requires HTTPS');
+				throw new Error('Esta funcionalidad requiere HTTPS');
 			}
 
 			DeviceHeadingTracker.#onHeadingChange = onHeadingChange;
@@ -23,7 +23,7 @@ export class DeviceHeadingTracker {
 				DeviceHeadingTracker.#startDeviceOrientationFallback();
 			}
 			else {
-				throw new Error('Orientation sensor not supported on this device');
+				throw new Error('Sensor de orientación no disponible en este dispositivo');
 			}
 		}
 		catch (err) {
@@ -48,7 +48,7 @@ export class DeviceHeadingTracker {
 			const orientationPermission = await DeviceOrientationEvent.requestPermission();
 
 			if (orientationPermission !== 'granted') {
-				throw new Error('Orientation sensor permission denied');
+				throw new Error('Permiso de sensor de orientación denegado');
 			}
 		}
 	}
