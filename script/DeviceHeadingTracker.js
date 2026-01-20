@@ -74,7 +74,7 @@ export class DeviceHeadingTracker {
 	} */
 
 	static #startAbsoluteOrientationSensor() {
-		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
+		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({ frequency: DeviceHeadingTracker.#frequency });
 
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
 			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
@@ -83,30 +83,47 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
-			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
-			const hpr = Cesium.HeadingPitchRoll.fromQuaternion(quaternion);
-			let heading = Cesium.Math.toDegrees(hpr.heading);
-			let pitch = Cesium.Math.toDegrees(hpr.pitch);
-			const screenAngle = window.screen?.orientation?.angle || 0;
+			// Cesium quaternion
+			const quat = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
 
-			// PATCH: Detect the flip in landscape mode
-			// When pitch is very high (near vertical), the Euler conversion often
-			// flips heading by 180 and roll by 180.
-			if (screenAngle === 90 || screenAngle === 270) {
-				// If the device is tilted up significantly (pitch near 90 or -90),
-				// and you see a sudden 180 jump, correct the heading here.
-				if (Math.abs(pitch) > 90) {
-					heading = (heading + 180) % 360;
-				}
+			// Convert quaternion → rotation matrix
+			const rotationMatrix = Cesium.Matrix3.fromQuaternion(quat);
+
+			/*
+			* We take the device's forward vector and project it onto the horizontal plane.
+			* For AbsoluteOrientationSensor, the forward direction is -Z in device space.
+			*/
+			const forward = Cesium.Matrix3.multiplyByVector(
+				rotationMatrix,
+				new Cesium.Cartesian3(0, 0, -1),
+				new Cesium.Cartesian3()
+			);
+
+			// Project onto horizontal plane (remove vertical component)
+			forward.z = 0;
+
+			// If device is pointing straight up/down, ignore update
+			if (Cesium.Cartesian3.magnitudeSquared(forward) < 1e-6) {
+				return;
 			}
 
+			Cesium.Cartesian3.normalize(forward, forward);
+
+			// Heading from projected forward vector
+			let heading = Math.atan2(forward.x, forward.y);
+			heading = Cesium.Math.toDegrees(heading);
+
+			// Apply screen orientation correction
 			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
+
+			// Apply your low-pass filter
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
 
 		DeviceHeadingTracker.#orientationSensor.start();
 	}
+
 
 	static #startDeviceOrientationFallback() {
 		window.addEventListener('deviceorientation', DeviceHeadingTracker.#handleOrientationEvent, true);
