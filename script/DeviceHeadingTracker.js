@@ -54,7 +54,7 @@ export class DeviceHeadingTracker {
 	}
 
 	static #startAbsoluteOrientationSensor() {
-		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
+		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency, referenceFrame: 'screen'});
 
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
 			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
@@ -64,13 +64,22 @@ export class DeviceHeadingTracker {
 			}
 
 			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
-			let heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
-			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
+			const heading = DeviceHeadingTracker.#headingFromQuaternion(quaternion);
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
 
 		DeviceHeadingTracker.#orientationSensor.start();
+	}
+
+	static #headingFromQuaternion(q) {
+		const m = Cesium.Matrix3.fromQuaternion(q);
+		const f = Cesium.Matrix3.getColumn(m, 2, new Cesium.Cartesian3());
+		f.x = -f.x;
+		f.y = -f.y;
+		f.z = -f.z;
+		const headingRad = Math.atan2(f.x, f.y);
+		return (Cesium.Math.toDegrees(headingRad) + 360) % 360;
 	}
 
 	static #startDeviceOrientationFallback() {
