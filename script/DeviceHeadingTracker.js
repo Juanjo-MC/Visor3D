@@ -16,7 +16,7 @@ export class DeviceHeadingTracker {
 			// Set #previousHeading to the camera’s current heading to start the rotation from the correct angle
 			DeviceHeadingTracker.#previousHeading = cameraHeading;
 
-			if ('AbsoluteOrientationSensorSS' in window) {
+			if ('AbsoluteOrientationSensor' in window) {
 				DeviceHeadingTracker.#startAbsoluteOrientationSensor();
 			}
 			else if ('DeviceOrientationEvent' in window) {
@@ -84,10 +84,10 @@ export class DeviceHeadingTracker {
 			heading = event.webkitCompassHeading;
 		}
 		else if (event.absolute && event.alpha !== null) {
-			heading = event.alpha;
+			heading = 360 - event.alpha;
 		}
 		else if (event.alpha !== null) {
-			heading = event.alpha;
+			heading = 360 - event.alpha;
 		}
 		else {
 			return;
