@@ -83,40 +83,33 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
+			// 1. Convert to Cesium Matrix
 			const cesiumQ = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
 			const matrix = Cesium.Matrix3.fromQuaternion(cesiumQ);
 
-			// Get the device's local axes in world space
-			const xDir = Cesium.Matrix3.getColumn(matrix, 0, new Cesium.Cartesian3());
-			const yDir = Cesium.Matrix3.getColumn(matrix, 1, new Cesium.Cartesian3());
-
-			// Select the "Forward" vector based on how the user is holding the screen
-			let direction;
+			// 2. Define the 'Forward' vector relative to the screen
+			// In Portrait (0°), the top of the phone is the Y-axis.
+			// In Landscape (90°), the top of the screen is the -X axis.
 			const screenAngle = window.screen?.orientation?.angle || 0;
+			let localForward;
 
 			switch (screenAngle) {
-				case 90:
-					direction = xDir; // Landscape: Right side of phone is 'forward'
-					break;
-				case 270:
-					direction = Cesium.Cartesian3.negate(xDir, new Cesium.Cartesian3()); // Landscape flipped
-					break;
-				case 180:
-					direction = Cesium.Cartesian3.negate(yDir, new Cesium.Cartesian3()); // Portrait flipped
-					break;
+				case 90:  localForward = new Cesium.Cartesian3(-1, 0, 0); break;
+				case 270: localForward = new Cesium.Cartesian3(1, 0, 0);  break;
+				case 180: localForward = new Cesium.Cartesian3(0, -1, 0); break;
 				case 0:
-				default:
-					direction = yDir; // Standard Portrait: Top of phone is 'forward'
-					break;
+				default:  localForward = new Cesium.Cartesian3(0, 1, 0);  break;
 			}
 
-			// Project the chosen vector onto the horizontal plane to get a stable heading
-			// atan2(x, y) gives the angle from the North (Y) axis
-			let heading = Cesium.Math.toDegrees(Math.atan2(direction.x, direction.y));
-        
-			// Ensure 0-360 range
-			heading = (heading + 360) % 360;
+			// 3. Transform the local 'Forward' into World Space
+			const worldForward = Cesium.Matrix3.multiplyByVector(matrix, localForward, new Cesium.Cartesian3());
 
+			// 4. Calculate Heading from the world vector's X and Y components
+			// atan2(x, y) assumes Y is North and X is East
+			let heading = Cesium.Math.toDegrees(Math.atan2(worldForward.x, worldForward.y));
+
+			// 5. Normalize and Filter
+			heading = (heading + 360) % 360;
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
