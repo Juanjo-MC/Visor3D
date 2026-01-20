@@ -83,73 +83,31 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
-			// Cesium quaternion
 			const quat = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
-			const rotationMatrix = Cesium.Matrix3.fromQuaternion(quat);
+			const rot = Cesium.Matrix3.fromQuaternion(quat);
 
-			// Device forward (-Z) and up (+Y) vectors in device space
-			const deviceForward = new Cesium.Cartesian3(0, 0, -1);
-			const deviceUp = new Cesium.Cartesian3(0, 1, 0);
-
-			// Rotate into world space
+			// Device forward vector (-Z)
 			const forwardWorld = Cesium.Matrix3.multiplyByVector(
-				rotationMatrix,
-				deviceForward,
+				rot,
+				new Cesium.Cartesian3(0, 0, -1),
 				new Cesium.Cartesian3()
 			);
 
-			const upWorld = Cesium.Matrix3.multiplyByVector(
-				rotationMatrix,
-				deviceUp,
-				new Cesium.Cartesian3()
-			);
+			// Project onto world horizontal plane (Z-up)
+			forwardWorld.z = 0;
 
-			// Gravity vector (points down)
-			const gravity = Cesium.Cartesian3.negate(
-				Cesium.Cartesian3.normalize(upWorld, upWorld),
-				upWorld
-			);
-
-			/*
-			* Build horizontal basis:
-			* east  = gravity × forward
-			* north = east × gravity
-			*/
-			const east = Cesium.Cartesian3.cross(gravity, forwardWorld, new Cesium.Cartesian3());
-
-			if (Cesium.Cartesian3.magnitudeSquared(east) < 1e-6) {
+			// If device is vertical, heading is undefined → ignore
+			if (Cesium.Cartesian3.magnitudeSquared(forwardWorld) < 1e-6) {
 				return;
 			}
 
-			Cesium.Cartesian3.normalize(east, east);
-			const north = Cesium.Cartesian3.cross(east, gravity, new Cesium.Cartesian3());
-			Cesium.Cartesian3.normalize(north, north);
+			Cesium.Cartesian3.normalize(forwardWorld, forwardWorld);
 
-			// Project forward onto horizontal plane
-			const forwardHorizontal = Cesium.Cartesian3.subtract(
-				forwardWorld,
-				Cesium.Cartesian3.multiplyByScalar(
-					gravity,
-					Cesium.Cartesian3.dot(forwardWorld, gravity),
-					new Cesium.Cartesian3()
-				),
-				new Cesium.Cartesian3()
-			);
-
-			if (Cesium.Cartesian3.magnitudeSquared(forwardHorizontal) < 1e-6) {
-				return;
-			}
-
-			Cesium.Cartesian3.normalize(forwardHorizontal, forwardHorizontal);
-
-			// Heading from horizontal frame
-			let heading = Math.atan2(
-				Cesium.Cartesian3.dot(forwardHorizontal, east),
-				Cesium.Cartesian3.dot(forwardHorizontal, north)
-			);
-
+			// World heading: X = East, Y = North
+			let heading = Math.atan2(forwardWorld.x, forwardWorld.y);
 			heading = Cesium.Math.toDegrees(heading);
 			heading = (heading + 360) % 360;
+
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
