@@ -53,7 +53,7 @@ export class DeviceHeadingTracker {
 		}
 	}
 
-	static #startAbsoluteOrientationSensor() {
+/* 	static #startAbsoluteOrientationSensor() {
 		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
 
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
@@ -65,6 +65,42 @@ export class DeviceHeadingTracker {
 
 			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
 			let heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
+			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
+			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
+			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
+		});
+
+		DeviceHeadingTracker.#orientationSensor.start();
+	} */
+
+	static #startAbsoluteOrientationSensor() {
+		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
+
+		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
+			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
+
+			if (!q) {
+				return;
+			}
+
+			// 1. Convert sensor quaternion to Cesium Quaternion
+			const cesiumQ = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
+
+			// 2. Create a rotation matrix from the quaternion
+			const matrix = Cesium.Matrix3.fromQuaternion(cesiumQ);
+
+			// 3. Get the 'direction' vector (the Y-axis of the phone, pointing out the top)
+			// In the AbsoluteOrientationSensor frame, -Z is usually forward.
+			// For mobile "Compass" style, we often want the Y-axis (top of phone).
+			const direction = new Cesium.Cartesian3();
+			Cesium.Matrix3.getColumn(matrix, 1, direction); // Column 1 is the Y-axis
+
+			// 4. Calculate heading based on the direction vector's projection
+			// on the horizontal plane. This avoids the 180-flip at the zenith.
+			let heading = Math.atan2(direction.x, direction.y);
+			heading = Cesium.Math.toDegrees(heading);
+
+			// 5. Apply correction and filter
 			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
