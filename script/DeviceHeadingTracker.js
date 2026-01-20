@@ -83,33 +83,24 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
-			// 1. Convert to Cesium Matrix
-			const cesiumQ = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
-			const matrix = Cesium.Matrix3.fromQuaternion(cesiumQ);
-
-			// 2. Define the 'Forward' vector relative to the screen
-			// In Portrait (0°), the top of the phone is the Y-axis.
-			// In Landscape (90°), the top of the screen is the -X axis.
+			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
+			const hpr = Cesium.HeadingPitchRoll.fromQuaternion(quaternion);
+			let heading = Cesium.Math.toDegrees(hpr.heading);
+			let pitch = Cesium.Math.toDegrees(hpr.pitch);
 			const screenAngle = window.screen?.orientation?.angle || 0;
-			let localForward;
 
-			switch (screenAngle) {
-				case 90:  localForward = new Cesium.Cartesian3(-1, 0, 0); break;
-				case 270: localForward = new Cesium.Cartesian3(1, 0, 0);  break;
-				case 180: localForward = new Cesium.Cartesian3(0, -1, 0); break;
-				case 0:
-				default:  localForward = new Cesium.Cartesian3(0, 1, 0);  break;
+			// PATCH: Detect the flip in landscape mode
+			// When pitch is very high (near vertical), the Euler conversion often
+			// flips heading by 180 and roll by 180.
+			if (screenAngle === 90 || screenAngle === 270) {
+				// If the device is tilted up significantly (pitch near 90 or -90),
+				// and you see a sudden 180 jump, correct the heading here.
+				if (Math.abs(pitch) > 90) {
+					heading = (heading + 180) % 360;
+				}
 			}
 
-			// 3. Transform the local 'Forward' into World Space
-			const worldForward = Cesium.Matrix3.multiplyByVector(matrix, localForward, new Cesium.Cartesian3());
-
-			// 4. Calculate Heading from the world vector's X and Y components
-			// atan2(x, y) assumes Y is North and X is East
-			let heading = Cesium.Math.toDegrees(Math.atan2(worldForward.x, worldForward.y));
-
-			// 5. Normalize and Filter
-			heading = (heading + 360) % 360;
+			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
