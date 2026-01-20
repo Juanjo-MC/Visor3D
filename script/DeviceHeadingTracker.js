@@ -83,25 +83,40 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
-			// 1. Convert sensor quaternion to Cesium Quaternion
 			const cesiumQ = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
-
-			// 2. Create a rotation matrix from the quaternion
 			const matrix = Cesium.Matrix3.fromQuaternion(cesiumQ);
 
-			// 3. Get the 'direction' vector (the Y-axis of the phone, pointing out the top)
-			// In the AbsoluteOrientationSensor frame, -Z is usually forward.
-			// For mobile "Compass" style, we often want the Y-axis (top of phone).
-			const direction = new Cesium.Cartesian3();
-			Cesium.Matrix3.getColumn(matrix, 1, direction); // Column 1 is the Y-axis
+			// Get the device's local axes in world space
+			const xDir = Cesium.Matrix3.getColumn(matrix, 0, new Cesium.Cartesian3());
+			const yDir = Cesium.Matrix3.getColumn(matrix, 1, new Cesium.Cartesian3());
 
-			// 4. Calculate heading based on the direction vector's projection
-			// on the horizontal plane. This avoids the 180-flip at the zenith.
-			let heading = Math.atan2(direction.x, direction.y);
-			heading = Cesium.Math.toDegrees(heading);
+			// Select the "Forward" vector based on how the user is holding the screen
+			let direction;
+			const screenAngle = window.screen?.orientation?.angle || 0;
 
-			// 5. Apply correction and filter
-			heading = (heading + DeviceHeadingTracker.#getDeviceOrientationCorrection() + 360) % 360;
+			switch (screenAngle) {
+				case 90:
+					direction = xDir; // Landscape: Right side of phone is 'forward'
+					break;
+				case 270:
+					direction = Cesium.Cartesian3.negate(xDir, new Cesium.Cartesian3()); // Landscape flipped
+					break;
+				case 180:
+					direction = Cesium.Cartesian3.negate(yDir, new Cesium.Cartesian3()); // Portrait flipped
+					break;
+				case 0:
+				default:
+					direction = yDir; // Standard Portrait: Top of phone is 'forward'
+					break;
+			}
+
+			// Project the chosen vector onto the horizontal plane to get a stable heading
+			// atan2(x, y) gives the angle from the North (Y) axis
+			let heading = Cesium.Math.toDegrees(Math.atan2(direction.x, direction.y));
+        
+			// Ensure 0-360 range
+			heading = (heading + 360) % 360;
+
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
