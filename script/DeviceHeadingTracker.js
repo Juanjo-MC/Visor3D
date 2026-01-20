@@ -74,11 +74,10 @@ export class DeviceHeadingTracker {
 	} */
 
 	static #startAbsoluteOrientationSensor() {
-		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({ frequency: DeviceHeadingTracker.#frequency });
+		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency});
 
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
 			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
-
 			if (!q) {
 				return;
 			}
@@ -86,7 +85,7 @@ export class DeviceHeadingTracker {
 			const quat = new Cesium.Quaternion(q[0], q[1], q[2], q[3]);
 			const rotationMatrix = Cesium.Matrix3.fromQuaternion(quat);
 
-			// Select device forward axis depending on screen orientation
+			// Select device forward axis based on screen orientation
 			const angle = window.screen?.orientation?.angle ?? 0;
 			let deviceForward;
 
@@ -100,18 +99,33 @@ export class DeviceHeadingTracker {
 				case 180:  // upside-down portrait
 					deviceForward = new Cesium.Cartesian3(0, 0, 1);
 					break;
-				case 0:    // portrait
-				default:
+				case 0:
+					default:   // portrait
 					deviceForward = new Cesium.Cartesian3(0, 0, -1);
-				break;
+					break;
 			}
 
-			// Rotate device forward vector into world space
+			// Device up vector (always +Y in screen space)
+			const deviceUp = new Cesium.Cartesian3(0, 1, 0);
+
+			// Rotate vectors into world space
 			const forward = Cesium.Matrix3.multiplyByVector(
 				rotationMatrix,
 				deviceForward,
 				new Cesium.Cartesian3()
 			);
+
+			const up = Cesium.Matrix3.multiplyByVector(
+				rotationMatrix,
+				deviceUp,
+				new Cesium.Cartesian3()
+			);
+
+			// Disambiguation step:
+			// If device is upside-down, reverse forward direction
+			if (up.z < 0) {
+				Cesium.Cartesian3.negate(forward, forward);
+			}
 
 			// Project onto horizontal plane
 			forward.z = 0;
@@ -122,10 +136,11 @@ export class DeviceHeadingTracker {
 
 			Cesium.Cartesian3.normalize(forward, forward);
 
-			// Heading from projected vector
+			// Heading from horizontal projection
 			let heading = Math.atan2(forward.x, forward.y);
 			heading = Cesium.Math.toDegrees(heading);
 			heading = (heading + 360) % 360;
+
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
