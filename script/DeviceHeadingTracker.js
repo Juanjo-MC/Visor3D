@@ -23,7 +23,7 @@ export class DeviceHeadingTracker {
 				DeviceHeadingTracker.#startDeviceOrientationFallback();
 			}
 			else {
-				throw new Error('Sensor de orientación no disponible en este dispositivo');
+				throw new Error('Sensor de orientación no soportado en este navegador');
 			}
 		}
 		catch (err) {

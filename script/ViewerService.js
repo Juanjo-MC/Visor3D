@@ -36,11 +36,8 @@ export class ViewerService {
 		});
 
 		viewer.baseLayerPicker.viewModel.terrainProviderViewModels.removeAll();
-
-		// This will increase image sharpness on high DPI displays
-		if (window.devicePixelRatio > 2) {
-			viewer.resolutionScale = 2;
-		}
+		viewer.camera.percentageChanged = 0.05;
+		viewer.resolutionScale = Math.min(window.devicePixelRatio, 2.0);
 
 		// On mobile devices, cap camera movement to 0.75% of the window size per frame
 		// This prevents gestures, like fast swipes or drags, from moving the camera too far, providing a more controlled feel
@@ -48,14 +45,14 @@ export class ViewerService {
 			viewer.scene.screenSpaceCameraController.maximumMovementRatio = 0.0075;
 		}
 
-		viewer.scene.globe.maximumScreenSpaceError = 1.5;
-		viewer.scene.globe.depthTestAgainstTerrain = true;
-		viewer.scene.globe.loadingDescendantLimit = 50;
 		viewer.scene.screenSpaceCameraController.minimumCollisionTerrainHeight = 5000;
 		viewer.scene.screenSpaceCameraController.inertiaSpin = 0;
 		viewer.scene.screenSpaceCameraController.inertiaTranslate = 0;
 		viewer.scene.screenSpaceCameraController.inertiaZoom = 0;
-		viewer.camera.percentageChanged = 0.05;
+		viewer.scene.globe.depthTestAgainstTerrain = true;
+		viewer.scene.globe.maximumScreenSpaceError = 1.5;
+		viewer.scene.globe.loadingDescendantLimit = 50;
+		viewer.scene.postProcessStages.fxaa.enabled = false;
 		ViewerService.#viewer = viewer;
 	}
 
