@@ -64,7 +64,15 @@ export class DeviceHeadingTracker {
 			}
 
 			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
-			const heading = DeviceHeadingTracker.#headingFromQuaternion(quaternion);
+			let heading;
+
+			if (DeviceHeadingTracker.#isDeviceHorizontal(quaternion)) {
+				heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
+			}
+			else {
+				heading = DeviceHeadingTracker.#headingFromQuaternion(quaternion);
+			}
+
 			const filteredHeading = DeviceHeadingTracker.#applyFilter(heading);
 			DeviceHeadingTracker.#onHeadingChange(filteredHeading);
 		});
@@ -72,13 +80,18 @@ export class DeviceHeadingTracker {
 		DeviceHeadingTracker.#orientationSensor.start();
 	}
 
+	static #isDeviceHorizontal(q) {
+		const orientationMatrix = Cesium.Matrix3.fromQuaternion(q);
+		const deviceNormal = Cesium.Matrix3.getColumn(orientationMatrix, 2, new Cesium.Cartesian3());
+		return Math.abs(deviceNormal.z) > 0.866; // = cos(30°)
+	}
+
 	static #headingFromQuaternion(q) {
-		const m = Cesium.Matrix3.fromQuaternion(q);
-		const f = Cesium.Matrix3.getColumn(m, 2, new Cesium.Cartesian3());
-		f.x = -f.x;
-		f.y = -f.y;
-		f.z = -f.z;
-		const headingRad = Math.atan2(f.x, f.y);
+		const orientationMatrix = Cesium.Matrix3.fromQuaternion(q);
+		const deviceForward = Cesium.Matrix3.getColumn(orientationMatrix, 2, new Cesium.Cartesian3());
+		deviceForward.x = -deviceForward.x;
+		deviceForward.y = -deviceForward.y;
+		const headingRad = Math.atan2(deviceForward.x, deviceForward.y);
 		return (Cesium.Math.toDegrees(headingRad) + 360) % 360;
 	}
 
