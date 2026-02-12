@@ -72,6 +72,7 @@ export class Application {
 		btnClearSearch: document.getElementById('btnClearSearch'),
 		btnUserPosition: document.getElementById('btnUserPosition'),
 		btnPanorama: document.getElementById('btnPanorama'),
+		btnSlope: document.getElementById('btnSlope'),
 	});
 
 	static async initialize() {
@@ -93,7 +94,7 @@ export class Application {
 	static #prepareUI() {
 		if (!Device.isMobile() && Device.hasMouse()) { // Coordinates box only visible on PCs
 			Application.#domElement.coordinatesContainer.style.display = 'flex';
-			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----<span>';
+			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----&nbsp;&nbsp;<strong>Pendiente&nbsp;(°)</strong>:&nbsp;----';
 		}
 		else { // Panorama button only visible on mobile devices
 			Application.#domElement.btnPanorama.style.display = 'flex';
@@ -131,6 +132,7 @@ export class Application {
 		Application.#domElement.btnClearSearch.addEventListener('click', Application.#onBtnClearSearchClick);
 		Application.#domElement.btnUserPosition.addEventListener('click', Application.#onBtnUserPositionClick);
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
+		Application.#domElement.btnSlope.addEventListener('click', Application.#onBtnSlopeClick);
 	}
 
 	static #prepareScene() { // TO DO: refactor. This function is dificult to follow, it should be splitted on smaller logical ones
@@ -405,23 +407,25 @@ export class Application {
 		ViewerService.toggleCameraGestures(true);
 	}
 
-	static async #onMouseMove(movement) { // Update coordinates
+	static async #onMouseMove(movement) { // Update coordinates, altitue and slope
 		const position = ViewerService.getCartographicScreenPosition(movement.endPosition);
 		let lat = '----';
 		let lon = '----';
 		let altitude = '----';
+		let slope = '----';
 
 		if (position) {
 			lat = position.lat.toFixed(6);
 			lon = position.lon.toFixed(6);
-			altitude = await ViewerService.getElevation(lat, lon);
+			const slopeDetails = await ViewerService.getSlopeDetails(position.lat, position.lon);
 
-			if (altitude) {
-				altitude = altitude.toFixed(0);
+			if (slopeDetails) {
+				altitude = slopeDetails.height.toFixed(0);
+				slope = slopeDetails.slope.toFixed(0);
 			}
 		}
 
-		Application.#domElement.coordinatesContainer.innerHTML = `<strong>Lat</strong>:&nbsp;${lat}&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;${lon}&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;${altitude}<span>`;
+		Application.#domElement.coordinatesContainer.innerHTML = `<strong>Lat</strong>:&nbsp;${lat}&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;${lon}&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;${altitude}&nbsp;&nbsp;<strong>Pendiente&nbsp;(°)</strong>:&nbsp;${slope}`;
 	}
 
 	static #onSelectedImageryChange(imagery) { // Show toast
@@ -778,6 +782,24 @@ export class Application {
 		catch (err) {
 			console.error(err);
 			Application.#showToast(`Se ha producido un error en el sensor de orientación: ${err.message}`, Application.#toastType.ERROR);
+		}
+	}
+
+	// Slope layer
+	static async #onBtnSlopeClick() {
+		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
+
+		if(slopeLayerActive ==='false'){
+			ViewerService.showSlope();
+			ViewerService.refreshScene();
+			Application.#domElement.btnSlope.setAttribute('active', 'true');
+			Application.#domElement.btnSlope.style.color = 'rgb(255, 165, 0)';
+		}
+		else {
+			ViewerService.clearGlobeMaterial();
+			ViewerService.refreshScene();
+			Application.#domElement.btnSlope.setAttribute('active', 'false');
+			Application.#domElement.btnSlope.style.color = 'rgb(237, 255, 255)';
 		}
 	}
 }

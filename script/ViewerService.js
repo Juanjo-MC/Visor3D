@@ -128,6 +128,7 @@ export class ViewerService {
 
 	static async #getTerrainProvider() {
 		return await Cesium.CesiumTerrainProvider.fromUrl("https://qm-mdt.idee.es/1.0.0/terrain", {
+			requestVertexNormals: true,
 			credit: new Cesium.Credit("<a href='https://www.ign.es/web/ign/portal/qsm-cnig' target='_blank'>Instituto Geográfico Nacional (IGN)</a>"),
 		})
 	}
@@ -168,6 +169,44 @@ export class ViewerService {
 		const position = [Cesium.Cartographic.fromDegrees(lon, lat)];
 		await Cesium.sampleTerrainMostDetailed(ViewerService.#viewer.terrainProvider, position);
 		return position[0].height;
+	}
+
+	static async getSlopeDetails(lat, lon) {
+		const viewer = ViewerService.#viewer;
+		const terrainProvider = viewer.terrainProvider;
+
+		const offset = 0.00001;
+		const positions = [
+			Cesium.Cartographic.fromDegrees(lon, lat),
+			Cesium.Cartographic.fromDegrees(lon + offset, lat),
+			Cesium.Cartographic.fromDegrees(lon, lat + offset)
+		];
+
+		await Cesium.sampleTerrainMostDetailed(terrainProvider, positions);
+		const p0 = Cesium.Cartographic.toCartesian(positions[0]);
+		const p1 = Cesium.Cartographic.toCartesian(positions[1]);
+		const p2 = Cesium.Cartographic.toCartesian(positions[2]);
+
+		// Calculate the Surface Normal using the cross product
+		// Vector A = p1 - p0, Vector B = p2 - p0
+		const v0 = Cesium.Cartesian3.subtract(p1, p0, new Cesium.Cartesian3());
+		const v1 = Cesium.Cartesian3.subtract(p2, p0, new Cesium.Cartesian3());
+
+		// The cross product gives us the vector perpendicular to the triangle
+		const surfaceNormal = Cesium.Cartesian3.cross(v0, v1, new Cesium.Cartesian3());
+		Cesium.Cartesian3.normalize(surfaceNormal, surfaceNormal);
+
+		// Get the local "Up" vector (Ellipsoid Normal)
+		const upVector = viewer.scene.globe.ellipsoid.geodeticSurfaceNormal(p0);
+
+		// Calculate the slope angle
+		const angleInRadians = Cesium.Cartesian3.angleBetween(surfaceNormal, upVector);
+		const slopeDegrees = Cesium.Math.toDegrees(angleInRadians);
+
+		return {
+			slope: slopeDegrees,
+			height: positions[0].height
+		};
 	}
 
 	static getCameraPosition() { // {lat, lon, altitude, heading, pitch}
@@ -281,6 +320,58 @@ export class ViewerService {
 		controller.enableZoom = enabled;
 		controller.enableTilt = enabled;
 		controller.enableLook = enabled;
+	}
+
+	// Globe materials
+	static clearGlobeMaterial() {
+		ViewerService.#viewer.scene.globe.material = undefined;
+	}
+
+	static showSlope() {
+		ViewerService.#viewer.scene.globe.material = ViewerService.slopeColorRamp();
+	}
+
+	static slopeColorRamp() {
+		return new Cesium.Material({
+			fabric: {
+				type: 'SlopeProcedural',
+				source: `
+					czm_material czm_getMaterial(czm_materialInput materialInput) {
+						czm_material material = czm_getDefaultMaterial(materialInput);
+						float s = materialInput.slope;
+						float degrees = s * (180.0 / 3.14159265);
+						vec4 color = vec4(0.0);
+
+						if(degrees >= 20.0 && degrees < 27.0) {
+							color = vec4(0.0, 1.0, 0.0, 0.2); // Green
+						}else if(degrees >= 27.0 && degrees < 30.0) {
+							//color = vec4(1.0, 1.0, 0.0, 0.2); // Yellow
+							color = vec4(0.93, 0.96, 0.19, 0.2); // Yellow
+						} else if(degrees >= 30.0 && degrees < 32.0){
+							//color = vec4(0.65, 0.65, 0.0, 0.2); // Light Orange
+							color = vec4(0.93, 0.74, 0.2, 0.2); // Light Orange
+						} else if(degrees >= 32.0 && degrees < 35.0) {
+							//color = vec4(1.0, 0.65, 0.0, 0.2); // Orange
+							color = vec4(1.0, 0.47, 0.0, 0.2); // Orange
+						} else if(degrees >= 35.0 && degrees < 46.0) {
+							//color = vec4(1.0, 0.0, 0.0, 0.2); // Red
+							color = vec4(0.97, 0.1, 0.1, 0.2); // Red
+						} else if(degrees >= 46.0 && degrees < 50.0) {
+							//color = vec4(0.5, 0.0, 0.5, 0.2); // Purple
+							color = vec4(0.53, 0.0, 0.88, 0.2); // Purple
+						} else if(degrees >= 50.0 && degrees < 60.0) {
+							color = vec4(0.0, 0.0, 1.0, 0.2); // Blue
+						} else if (degrees >= 60.0){
+							color = vec4(0.1, 0.1, 0.1, 0.2); // Black
+						}
+
+						material.diffuse = color.rgb;
+						material.alpha = color.a;
+						return material;
+					}
+				`
+			}
+		});
 	}
 
 	// Event handlers

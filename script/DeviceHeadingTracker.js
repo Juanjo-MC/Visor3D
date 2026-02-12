@@ -80,14 +80,14 @@ export class DeviceHeadingTracker {
 		DeviceHeadingTracker.#orientationSensor.start();
 	}
 
-	static #isDeviceHorizontal(q) {
-		const orientationMatrix = Cesium.Matrix3.fromQuaternion(q);
+	static #isDeviceHorizontal(quaternion) {
+		const orientationMatrix = Cesium.Matrix3.fromQuaternion(quaternion);
 		const deviceNormal = Cesium.Matrix3.getColumn(orientationMatrix, 2, new Cesium.Cartesian3());
 		return Math.abs(deviceNormal.z) > 0.866; // = cos(30°)
 	}
 
-	static #headingFromQuaternion(q) {
-		const orientationMatrix = Cesium.Matrix3.fromQuaternion(q);
+	static #headingFromQuaternion(quaternion) {
+		const orientationMatrix = Cesium.Matrix3.fromQuaternion(quaternion);
 		const deviceForward = Cesium.Matrix3.getColumn(orientationMatrix, 2, new Cesium.Cartesian3());
 		deviceForward.x = -deviceForward.x;
 		deviceForward.y = -deviceForward.y;
