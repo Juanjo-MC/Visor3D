@@ -1,14 +1,14 @@
-import {Device} from './Device.js';
-import {Utils} from './Utils.js';
-import {ViewerService} from './ViewerService.js';
-import {POIFinder} from './POIFinder.js';
-import {POIManager} from './POIManager.js';
-import {CompassService} from './CompassService.js';
-import {ExternalDataService} from './ExternalDataService.js';
-import {GeocodingService} from './GeocodingService.js';
-import {GeolocationService} from './GeolocationService.js';
-import {MarkersManager} from './MarkersManager.js';
-import {DeviceHeadingTracker} from './DeviceHeadingTracker.js';
+import { Device } from './Device.js';
+import { Utils } from './Utils.js';
+import { ViewerService } from './ViewerService.js';
+import { POIFinder } from './POIFinder.js';
+import { POIManager } from './POIManager.js';
+import { CompassService } from './CompassService.js';
+import { ExternalDataService } from './ExternalDataService.js';
+import { GeocodingService } from './GeocodingService.js';
+import { GeolocationService } from './GeolocationService.js';
+import { MarkersManager } from './MarkersManager.js';
+import { DeviceHeadingTracker } from './DeviceHeadingTracker.js';
 
 export class Application {
 	static #POIS_FILE_PATH = './resources/pois.json.gz';
@@ -51,7 +51,6 @@ export class Application {
 	static #domElement = Object.freeze({
 		viewerContainer: document.getElementById('viewerContainer'),
 		toastContainer: document.getElementById('toastContainer'),
-		coordinatesContainer: document.getElementById('coordinatesContainer'),
 		compass: document.querySelector('.compass-circle'),
 		toggleCumbres: document.getElementById('toggleCumbres'),
 		togglePoblaciones: document.getElementById('togglePoblaciones'),
@@ -73,6 +72,12 @@ export class Application {
 		btnUserPosition: document.getElementById('btnUserPosition'),
 		btnPanorama: document.getElementById('btnPanorama'),
 		btnSlope: document.getElementById('btnSlope'),
+		statsDock: document.getElementById('statsDock'),
+		valLat: document.getElementById('valLat'),
+		valLon: document.getElementById('valLon'),
+		valHeight: document.getElementById('valHeight'),
+		valSlope: document.getElementById('valSlope'),
+		valAspect: document.getElementById('valAspect'),
 	});
 
 	static async initialize() {
@@ -85,7 +90,7 @@ export class Application {
 			Application.#bindEventListeners();
 			Application.#prepareScene();
 		}
-		catch(err) {
+		catch (err) {
 			console.error(err);
 			Application.#showToast(`Se ha producido un error al inicializar la aplicación: ${err.message}`, Application.#toastType.ERROR);
 		}
@@ -93,9 +98,7 @@ export class Application {
 
 	static #prepareUI() {
 		if (!Device.isMobile() && Device.hasMouse()) { // Coordinates box only visible on PCs
-			Application.#domElement.coordinatesContainer.style.display = 'flex';
-			Application.#domElement.coordinatesContainer.innerHTML = '<strong>Lat</strong>:&nbsp;----&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;----&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;----&nbsp;&nbsp;<strong>Pendiente&nbsp;(°)</strong>:&nbsp;----';
-		}
+			Application.#domElement.statsDock.style.display = 'flex';}
 		else { // Panorama button only visible on mobile devices
 			Application.#domElement.btnPanorama.style.display = 'flex';
 		}
@@ -238,7 +241,7 @@ export class Application {
 		setTimeout(() => {
 			toast.classList.remove('show');
 			toast.classList.add('hide');
-			toast.addEventListener('transitionend', () => container.removeChild(toast), {once: true});
+			toast.addEventListener('transitionend', () => container.removeChild(toast), { once: true });
 		}, duration);
 	}
 
@@ -259,7 +262,7 @@ export class Application {
 		const cameraPosition = ViewerService.getCameraPosition();
 		const lat = cameraPosition.lat;
 		const lon = cameraPosition.lon;
-		const oldCameraPosition = {lat: Application.#latestLoadedPOIsCameraPosition.lat, lon: Application.#latestLoadedPOIsCameraPosition.lon};
+		const oldCameraPosition = { lat: Application.#latestLoadedPOIsCameraPosition.lat, lon: Application.#latestLoadedPOIsCameraPosition.lon };
 		Application.#latestLoadedPOIsCameraPosition.lat = lat;
 		Application.#latestLoadedPOIsCameraPosition.lon = lon;
 
@@ -284,7 +287,7 @@ export class Application {
 		}
 	}
 
-	static async #onCanvasClick(click) { // Show closest POI
+	static async #onCanvasClick(click) { // Show closest POI 
 		// On touch devices, users may tap slightly above terrain features, over the sky area
 		// To handle this, we search for coordinates up to 'yPixelsTolerance' pixels below the touch position
 		const yPixelsTolerance = 20;
@@ -293,7 +296,7 @@ export class Application {
 		let clickCartographicPosition;
 
 		for (let i = 0; i < yPixelsTolerance; i++) {
-			clickCartographicPosition = ViewerService.getCartographicScreenPosition({x: click.position.x, y: y});
+			clickCartographicPosition = ViewerService.getCartographicScreenPosition({ x: click.position.x, y: y });
 			y += 1;
 
 			if (clickCartographicPosition) {
@@ -356,7 +359,7 @@ export class Application {
 		let mouseStillDown = true;
 		let positionUnchanged = true;
 
-		if(x > margin && x < window.innerWidth - margin && y > margin && y < window.innerHeight - bottomMargin) {
+		if (x > margin && x < window.innerWidth - margin && y > margin && y < window.innerHeight - bottomMargin) {
 			return;
 		}
 
@@ -373,12 +376,12 @@ export class Application {
 		};
 
 		const removeEventListeners = () => {
-			document.removeEventListener("pointerup", onPointerUp, {capture: true});
-			document.removeEventListener("pointermove", onPointerMove, {capture: true});
+			document.removeEventListener("pointerup", onPointerUp, { capture: true });
+			document.removeEventListener("pointermove", onPointerMove, { capture: true });
 		};
 
-		document.addEventListener("pointerup", onPointerUp, {capture: true});
-		document.addEventListener("pointermove", onPointerMove, {capture: true});
+		document.addEventListener("pointerup", onPointerUp, { capture: true });
+		document.addEventListener("pointermove", onPointerMove, { capture: true });
 
 		setTimeout(() => {
 			removeEventListeners();
@@ -407,12 +410,13 @@ export class Application {
 		ViewerService.toggleCameraGestures(true);
 	}
 
-	static async #onMouseMove(movement) { // Update coordinates, altitue and slope
+	static async #onMouseMove(movement) { // Update coordinates, altitude, slope and aspect of the point under the mouse cursor
 		const position = ViewerService.getCartographicScreenPosition(movement.endPosition);
 		let lat = '----';
 		let lon = '----';
 		let altitude = '----';
 		let slope = '----';
+		let aspect = '----';
 
 		if (position) {
 			lat = position.lat.toFixed(6);
@@ -420,12 +424,17 @@ export class Application {
 			const slopeDetails = await ViewerService.getSlopeDetails(position.lat, position.lon);
 
 			if (slopeDetails) {
-				altitude = slopeDetails.height.toFixed(0);
-				slope = slopeDetails.slope.toFixed(0);
+				altitude = slopeDetails.height.toFixed(0) + ' m';
+				slope = slopeDetails.slope.toFixed(0) + '°';
+				aspect = Utils.degreesToCardinalDirection(slopeDetails.aspect);
 			}
 		}
 
-		Application.#domElement.coordinatesContainer.innerHTML = `<strong>Lat</strong>:&nbsp;${lat}&nbsp;&nbsp;<strong>Lon</strong>:&nbsp;${lon}&nbsp;&nbsp;<strong>Altitud&nbsp;(m)</strong>:&nbsp;${altitude}&nbsp;&nbsp;<strong>Pendiente&nbsp;(°)</strong>:&nbsp;${slope}`;
+		Application.#domElement.valLat.innerHTML = lat;
+		Application.#domElement.valLon.innerHTML = lon;
+		Application.#domElement.valHeight.innerHTML = altitude;
+		Application.#domElement.valSlope.innerHTML = slope;
+		Application.#domElement.valAspect.innerHTML = aspect;
 	}
 
 	static #onSelectedImageryChange(imagery) { // Show toast
@@ -541,16 +550,16 @@ export class Application {
 
 				switch (fileExtension) {
 					case 'gpx':
-						dataSourceInfo = await ExternalDataService.addGpxDataSource(ViewerService.viewer, {data: file, fileName: file.name}, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
+						dataSourceInfo = await ExternalDataService.addGpxDataSource(ViewerService.viewer, { data: file, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					case 'kml':
 					case 'kmz':
-						dataSourceInfo = await ExternalDataService.addKmlDataSource(ViewerService.viewer, {data: file, fileName: file.name}, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
+						dataSourceInfo = await ExternalDataService.addKmlDataSource(ViewerService.viewer, { data: file, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					case 'json':
 					case 'geojson':
 						const jsonData = JSON.parse(await file.text());
-						dataSourceInfo = await ExternalDataService.addGeoJsonDataSource(ViewerService.viewer, {data: jsonData, fileName: file.name}, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
+						dataSourceInfo = await ExternalDataService.addGeoJsonDataSource(ViewerService.viewer, { data: jsonData, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					default:
 						Application.#showToast(`Tipo de fichero no soportado: ${fileExtension}`, Application.#toastType.WARNING);
@@ -634,12 +643,12 @@ export class Application {
 						searchResultsList.add(option);
 					}
 
-				searchResultsList.style.display = 'block';
+					searchResultsList.style.display = 'block';
 
 				}
 			}
 		}
-		catch(err) {
+		catch (err) {
 			console.error(err);
 			Application.#showToast(`Se ha producido un error en el geocodificador: ${err.message}`, Application.#toastType.ERROR);
 		}
@@ -669,6 +678,26 @@ export class Application {
 		ViewerService.refreshScene();
 	}
 
+	// Slope layer
+	static async #onBtnSlopeClick() {
+		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
+
+		if (slopeLayerActive === 'false') {
+			ViewerService.showSlope();
+			ViewerService.refreshScene();
+			Application.#domElement.btnSlope.setAttribute('active', 'true');
+			Application.#domElement.btnSlope.style.color = 'rgb(255, 165, 0)';
+			Application.#showToast('Capa de pendientes activada');
+		}
+		else {
+			ViewerService.clearGlobeMaterial();
+			ViewerService.refreshScene();
+			Application.#domElement.btnSlope.setAttribute('active', 'false');
+			Application.#domElement.btnSlope.style.color = 'rgb(237, 255, 255)';
+			Application.#showToast('Capa de pendientes desactivada');
+		}
+	}
+
 	// Geolocation
 	static #onBtnUserPositionClick() {
 		try {
@@ -677,7 +706,7 @@ export class Application {
 			const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
 
 			if (geolocationActive === 'false') {
-				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, {enableHighAccuracy: true, timeout: 25000}, 30000);
+				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, { enableHighAccuracy: true, timeout: 25000 }, 30000);
 				Application.#domElement.btnUserPosition.setAttribute('active', 'true');
 				Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
 				Application.#showToast('Geolocalización activada');
@@ -749,7 +778,7 @@ export class Application {
 		Application.#domElement.btnUserPosition.setAttribute('active', 'false');
 		Application.#domElement.btnUserPosition.style.color = 'rgb(237, 255, 255)';
 
-		if(Application.#geolocationMarkerId) {
+		if (Application.#geolocationMarkerId) {
 			MarkersManager.removeMarker(Application.#geolocationMarkerId);
 			Application.#geolocationMarkerId = null;
 			Application.#isGeolocationStopping = false;
@@ -782,24 +811,6 @@ export class Application {
 		catch (err) {
 			console.error(err);
 			Application.#showToast(`Se ha producido un error en el sensor de orientación: ${err.message}`, Application.#toastType.ERROR);
-		}
-	}
-
-	// Slope layer
-	static async #onBtnSlopeClick() {
-		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
-
-		if(slopeLayerActive ==='false'){
-			ViewerService.showSlope();
-			ViewerService.refreshScene();
-			Application.#domElement.btnSlope.setAttribute('active', 'true');
-			Application.#domElement.btnSlope.style.color = 'rgb(255, 165, 0)';
-		}
-		else {
-			ViewerService.clearGlobeMaterial();
-			ViewerService.refreshScene();
-			Application.#domElement.btnSlope.setAttribute('active', 'false');
-			Application.#domElement.btnSlope.style.color = 'rgb(237, 255, 255)';
 		}
 	}
 }

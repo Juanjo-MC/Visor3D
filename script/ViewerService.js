@@ -204,9 +204,48 @@ export class ViewerService {
 		const slopeDegrees = Cesium.Math.toDegrees(angleInRadians);
 
 		return {
+			height: positions[0].height,
 			slope: slopeDegrees,
-			height: positions[0].height
+			aspect: this.#calculateAspect(surfaceNormal, v0, v1, upVector, p0),
 		};
+	}
+
+	static #calculateAspect(surfaceNormal, v0, v1, upVector, p0) {
+		// Define Local North (Vector from point towards North Pole)
+		const northPole = new Cesium.Cartesian3(0.0, 0.0, 6378137.0);
+		let northDir = Cesium.Cartesian3.subtract(northPole, p0, new Cesium.Cartesian3());
+
+		// Project North onto the horizontal tangent plane
+		let dotNorth = Cesium.Cartesian3.dot(northDir, upVector);
+
+		let projNorth = Cesium.Cartesian3.add(
+			northDir,
+			Cesium.Cartesian3.multiplyByScalar(upVector, -dotNorth, new Cesium.Cartesian3()),
+			new Cesium.Cartesian3()
+		);
+
+		Cesium.Cartesian3.normalize(projNorth, projNorth);
+
+		// Define Local East (Perpendicular to North and Up)
+		let eastDir = Cesium.Cartesian3.cross(upVector, projNorth, new Cesium.Cartesian3());
+		Cesium.Cartesian3.normalize(eastDir, eastDir);
+
+		// Project the Terrain Surface Normal onto the horizontal plane
+		let dotNormal = Cesium.Cartesian3.dot(surfaceNormal, upVector);
+
+		let horizontalNormal = Cesium.Cartesian3.add(
+			surfaceNormal,
+			Cesium.Cartesian3.multiplyByScalar(upVector, -dotNormal, new Cesium.Cartesian3()),
+			new Cesium.Cartesian3()
+		);
+
+		Cesium.Cartesian3.normalize(horizontalNormal, horizontalNormal);
+
+		// 5. Compass Bearing Calculation
+		let x = Cesium.Cartesian3.dot(horizontalNormal, projNorth); // North component
+		let y = Cesium.Cartesian3.dot(horizontalNormal, eastDir);  // East component
+		let aspectDegrees = Cesium.Math.toDegrees(Math.atan2(-y, x));
+		return (aspectDegrees + 360.0) % 360.0;
 	}
 
 	static getCameraPosition() { // {lat, lon, altitude, heading, pitch}
@@ -327,14 +366,15 @@ export class ViewerService {
 		ViewerService.#viewer.scene.globe.material = undefined;
 	}
 
-	static showSlope() {
-		ViewerService.#viewer.scene.globe.material = ViewerService.slopeColorRamp();
+	static showSlope(alpha = 0.2) {
+		ViewerService.#viewer.scene.globe.material = ViewerService.#slopeMaterial(alpha);
 	}
 
-	static slopeColorRamp() {
+	// Slope
+	static #slopeMaterial(alpha = 0.2) {
 		return new Cesium.Material({
 			fabric: {
-				type: 'SlopeProcedural',
+				type: 'Slope',
 				source: `
 					czm_material czm_getMaterial(czm_materialInput materialInput) {
 						czm_material material = czm_getDefaultMaterial(materialInput);
@@ -343,30 +383,66 @@ export class ViewerService {
 						vec4 color = vec4(0.0);
 
 						if(degrees >= 20.0 && degrees < 27.0) {
-							color = vec4(0.0, 1.0, 0.0, 0.2); // Green
+							color = vec4(0.0, 1.0, 0.0, ${alpha}); // Green
 						}else if(degrees >= 27.0 && degrees < 30.0) {
-							//color = vec4(1.0, 1.0, 0.0, 0.2); // Yellow
-							color = vec4(0.93, 0.96, 0.19, 0.2); // Yellow
+							color = vec4(0.93, 0.96, 0.19, ${alpha}); // Yellow
 						} else if(degrees >= 30.0 && degrees < 32.0){
-							//color = vec4(0.65, 0.65, 0.0, 0.2); // Light Orange
-							color = vec4(0.93, 0.74, 0.2, 0.2); // Light Orange
+							color = vec4(0.93, 0.74, 0.2, ${alpha}); // Light Orange
 						} else if(degrees >= 32.0 && degrees < 35.0) {
-							//color = vec4(1.0, 0.65, 0.0, 0.2); // Orange
-							color = vec4(1.0, 0.47, 0.0, 0.2); // Orange
+							color = vec4(1.0, 0.47, 0.0, ${alpha}); // Orange
 						} else if(degrees >= 35.0 && degrees < 46.0) {
-							//color = vec4(1.0, 0.0, 0.0, 0.2); // Red
-							color = vec4(0.97, 0.1, 0.1, 0.2); // Red
+							color = vec4(0.97, 0.1, 0.1, ${alpha}); // Red
 						} else if(degrees >= 46.0 && degrees < 50.0) {
-							//color = vec4(0.5, 0.0, 0.5, 0.2); // Purple
-							color = vec4(0.53, 0.0, 0.88, 0.2); // Purple
+							color = vec4(0.53, 0.0, 0.88, ${alpha}); // Purple
 						} else if(degrees >= 50.0 && degrees < 60.0) {
-							color = vec4(0.0, 0.0, 1.0, 0.2); // Blue
+							color = vec4(0.0, 0.0, 1.0, ${alpha}); // Blue
 						} else if (degrees >= 60.0){
-							color = vec4(0.1, 0.1, 0.1, 0.2); // Black
+							color = vec4(0.1, 0.1, 0.1, ${alpha}); // Black
 						}
 
 						material.diffuse = color.rgb;
 						material.alpha = color.a;
+						return material;
+					}
+				`
+			}
+		});
+	}
+
+	// Hillshade
+	static hillshadeMaterial() {
+
+		return new Cesium.Material({
+			fabric: {
+				type: 'Hillshade',
+
+				uniforms: {
+					u_shadowOpacity: 0.4,
+					u_sharpness: 3.0,
+				},
+
+				source: `
+					czm_material czm_getMaterial(czm_materialInput materialInput) {
+						czm_material material = czm_getDefaultMaterial(materialInput);
+
+						// Get the normal from the terrain
+						vec3 n = materialInput.normalEC;
+
+						// Sunlight direction (NW)
+						vec3 L = normalize(vec3(-1.0, 1.0, 1.2));
+
+						// Slope intensity math
+						float dotProduct = dot(n, L);
+						float intensity = clamp(dotProduct, 0.0, 1.0);
+
+						// Higher power means shadows stay "tighter" to the steep areas
+						intensity = pow(intensity, u_sharpness);
+
+						// Color and Transparency
+						// We keep the shadow pure black but make it much more transparent
+						material.diffuse = vec3(0.0);
+						material.alpha = (1.0 - intensity) * u_shadowOpacity;
+
 						return material;
 					}
 				`

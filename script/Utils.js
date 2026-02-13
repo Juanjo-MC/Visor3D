@@ -50,4 +50,11 @@ export class Utils {
 		const bSet = new Set(b);
 		return Array.from(aSet.difference(bSet));
 	}
+
+	static degreesToCardinalDirection(degrees) {
+		const normalizedDegrees = ((degrees % 360) + 360) % 360;
+		const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+		const index = Math.floor(((normalizedDegrees + 22.5) % 360) / 45);
+		return directions[index];
+	}
 }
