@@ -1,3 +1,5 @@
+import { Shaders } from "./Shaders.js";
+
 export class ViewerService {
 	static #viewer;
 	static #canvasEventHandler;
@@ -174,8 +176,8 @@ export class ViewerService {
 	static async getSlopeDetails(lat, lon) {
 		const viewer = ViewerService.#viewer;
 		const terrainProvider = viewer.terrainProvider;
-
 		const offset = 0.00001;
+
 		const positions = [
 			Cesium.Cartographic.fromDegrees(lon, lat),
 			Cesium.Cartographic.fromDegrees(lon + offset, lat),
@@ -186,65 +188,49 @@ export class ViewerService {
 		const p0 = Cesium.Cartographic.toCartesian(positions[0]);
 		const p1 = Cesium.Cartographic.toCartesian(positions[1]);
 		const p2 = Cesium.Cartographic.toCartesian(positions[2]);
-
-		// Calculate the Surface Normal using the cross product
-		// Vector A = p1 - p0, Vector B = p2 - p0
 		const v0 = Cesium.Cartesian3.subtract(p1, p0, new Cesium.Cartesian3());
 		const v1 = Cesium.Cartesian3.subtract(p2, p0, new Cesium.Cartesian3());
-
-		// The cross product gives us the vector perpendicular to the triangle
 		const surfaceNormal = Cesium.Cartesian3.cross(v0, v1, new Cesium.Cartesian3());
 		Cesium.Cartesian3.normalize(surfaceNormal, surfaceNormal);
-
-		// Get the local "Up" vector (Ellipsoid Normal)
 		const upVector = viewer.scene.globe.ellipsoid.geodeticSurfaceNormal(p0);
-
-		// Calculate the slope angle
-		const angleInRadians = Cesium.Cartesian3.angleBetween(surfaceNormal, upVector);
-		const slopeDegrees = Cesium.Math.toDegrees(angleInRadians);
 
 		return {
 			height: positions[0].height,
-			slope: slopeDegrees,
-			aspect: this.#calculateAspect(surfaceNormal, v0, v1, upVector, p0),
+			slope: ViewerService.#calculateSlope(surfaceNormal, upVector),
+			aspect: ViewerService.#calculateAspect(surfaceNormal, upVector, p0)
 		};
 	}
 
-	static #calculateAspect(surfaceNormal, v0, v1, upVector, p0) {
-		// Define Local North (Vector from point towards North Pole)
+	static #calculateSlope(surfaceNormal, upVector) {
+		const angleInRadians = Cesium.Cartesian3.angleBetween(surfaceNormal, upVector);
+		return Cesium.Math.toDegrees(angleInRadians);
+	}
+
+	static #calculateAspect(surfaceNormal, upVector, p0) {
 		const northPole = new Cesium.Cartesian3(0.0, 0.0, 6378137.0);
-		let northDir = Cesium.Cartesian3.subtract(northPole, p0, new Cesium.Cartesian3());
+		const northDir = Cesium.Cartesian3.subtract(northPole, p0, new Cesium.Cartesian3());
+		const dot = Cesium.Cartesian3.dot(northDir, upVector);
 
-		// Project North onto the horizontal tangent plane
-		let dotNorth = Cesium.Cartesian3.dot(northDir, upVector);
-
-		let projNorth = Cesium.Cartesian3.add(
+		const projNorth = Cesium.Cartesian3.add(
 			northDir,
-			Cesium.Cartesian3.multiplyByScalar(upVector, -dotNorth, new Cesium.Cartesian3()),
+			Cesium.Cartesian3.multiplyByScalar(upVector, -dot, new Cesium.Cartesian3()),
 			new Cesium.Cartesian3()
 		);
 
 		Cesium.Cartesian3.normalize(projNorth, projNorth);
+		const eastDir = Cesium.Cartesian3.cross(upVector, projNorth, new Cesium.Cartesian3());
+		const normalDotUp = Cesium.Cartesian3.dot(surfaceNormal, upVector);
 
-		// Define Local East (Perpendicular to North and Up)
-		let eastDir = Cesium.Cartesian3.cross(upVector, projNorth, new Cesium.Cartesian3());
-		Cesium.Cartesian3.normalize(eastDir, eastDir);
-
-		// Project the Terrain Surface Normal onto the horizontal plane
-		let dotNormal = Cesium.Cartesian3.dot(surfaceNormal, upVector);
-
-		let horizontalNormal = Cesium.Cartesian3.add(
+		const horizontalNormal = Cesium.Cartesian3.add(
 			surfaceNormal,
-			Cesium.Cartesian3.multiplyByScalar(upVector, -dotNormal, new Cesium.Cartesian3()),
+			Cesium.Cartesian3.multiplyByScalar(upVector, -normalDotUp, new Cesium.Cartesian3()),
 			new Cesium.Cartesian3()
 		);
 
 		Cesium.Cartesian3.normalize(horizontalNormal, horizontalNormal);
-
-		// 5. Compass Bearing Calculation
-		let x = Cesium.Cartesian3.dot(horizontalNormal, projNorth); // North component
-		let y = Cesium.Cartesian3.dot(horizontalNormal, eastDir);  // East component
-		let aspectDegrees = Cesium.Math.toDegrees(Math.atan2(-y, x));
+		const x = Cesium.Cartesian3.dot(horizontalNormal, projNorth);
+		const y = Cesium.Cartesian3.dot(horizontalNormal, eastDir);
+		const aspectDegrees = Cesium.Math.toDegrees(Math.atan2(-y, x));
 		return (aspectDegrees + 360.0) % 360.0;
 	}
 
@@ -268,7 +254,7 @@ export class ViewerService {
 
 		ViewerService.#viewer.camera.setView({
 			destination: currentCameraPosition,
-			orientation:{
+			orientation: {
 				heading: Cesium.Math.toRadians(heading),
 				pitch: currentCameraPitch,
 				roll: 0,
@@ -367,87 +353,11 @@ export class ViewerService {
 	}
 
 	static showSlope(alpha = 0.2) {
-		ViewerService.#viewer.scene.globe.material = ViewerService.#slopeMaterial(alpha);
+		ViewerService.#viewer.scene.globe.material = Shaders.slope(alpha);
 	}
 
-	// Slope
-	static #slopeMaterial(alpha = 0.2) {
-		return new Cesium.Material({
-			fabric: {
-				type: 'Slope',
-				source: `
-					czm_material czm_getMaterial(czm_materialInput materialInput) {
-						czm_material material = czm_getDefaultMaterial(materialInput);
-						float s = materialInput.slope;
-						float degrees = s * (180.0 / 3.14159265);
-						vec4 color = vec4(0.0);
-
-						if(degrees >= 20.0 && degrees < 27.0) {
-							color = vec4(0.0, 1.0, 0.0, ${alpha}); // Green
-						}else if(degrees >= 27.0 && degrees < 30.0) {
-							color = vec4(0.93, 0.96, 0.19, ${alpha}); // Yellow
-						} else if(degrees >= 30.0 && degrees < 32.0){
-							color = vec4(0.93, 0.74, 0.2, ${alpha}); // Light Orange
-						} else if(degrees >= 32.0 && degrees < 35.0) {
-							color = vec4(1.0, 0.47, 0.0, ${alpha}); // Orange
-						} else if(degrees >= 35.0 && degrees < 46.0) {
-							color = vec4(0.97, 0.1, 0.1, ${alpha}); // Red
-						} else if(degrees >= 46.0 && degrees < 50.0) {
-							color = vec4(0.53, 0.0, 0.88, ${alpha}); // Purple
-						} else if(degrees >= 50.0 && degrees < 60.0) {
-							color = vec4(0.0, 0.0, 1.0, ${alpha}); // Blue
-						} else if (degrees >= 60.0){
-							color = vec4(0.1, 0.1, 0.1, ${alpha}); // Black
-						}
-
-						material.diffuse = color.rgb;
-						material.alpha = color.a;
-						return material;
-					}
-				`
-			}
-		});
-	}
-
-	// Hillshade
-	static hillshadeMaterial() {
-
-		return new Cesium.Material({
-			fabric: {
-				type: 'Hillshade',
-
-				uniforms: {
-					u_shadowOpacity: 0.4,
-					u_sharpness: 3.0,
-				},
-
-				source: `
-					czm_material czm_getMaterial(czm_materialInput materialInput) {
-						czm_material material = czm_getDefaultMaterial(materialInput);
-
-						// Get the normal from the terrain
-						vec3 n = materialInput.normalEC;
-
-						// Sunlight direction (NW)
-						vec3 L = normalize(vec3(-1.0, 1.0, 1.2));
-
-						// Slope intensity math
-						float dotProduct = dot(n, L);
-						float intensity = clamp(dotProduct, 0.0, 1.0);
-
-						// Higher power means shadows stay "tighter" to the steep areas
-						intensity = pow(intensity, u_sharpness);
-
-						// Color and Transparency
-						// We keep the shadow pure black but make it much more transparent
-						material.diffuse = vec3(0.0);
-						material.alpha = (1.0 - intensity) * u_shadowOpacity;
-
-						return material;
-					}
-				`
-			}
-		});
+	static showLineArt(alpha = 0.5) {
+		ViewerService.#viewer.scene.globe.material = Shaders.lineArt(alpha);
 	}
 
 	// Event handlers

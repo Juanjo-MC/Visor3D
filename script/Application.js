@@ -72,6 +72,7 @@ export class Application {
 		btnUserPosition: document.getElementById('btnUserPosition'),
 		btnPanorama: document.getElementById('btnPanorama'),
 		btnSlope: document.getElementById('btnSlope'),
+		btnLineArt: document.getElementById('btnLineArt'),
 		statsDock: document.getElementById('statsDock'),
 		valLat: document.getElementById('valLat'),
 		valLon: document.getElementById('valLon'),
@@ -136,6 +137,7 @@ export class Application {
 		Application.#domElement.btnUserPosition.addEventListener('click', Application.#onBtnUserPositionClick);
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 		Application.#domElement.btnSlope.addEventListener('click', Application.#onBtnSlopeClick);
+		Application.#domElement.btnLineArt.addEventListener('click', Application.#onBtnLineArtClick);
 	}
 
 	static #prepareScene() { // TO DO: refactor. This function is dificult to follow, it should be splitted on smaller logical ones
@@ -678,11 +680,15 @@ export class Application {
 		ViewerService.refreshScene();
 	}
 
+	// Shaders layers
+
 	// Slope layer
 	static async #onBtnSlopeClick() {
 		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
 
 		if (slopeLayerActive === 'false') {
+			ViewerService.clearGlobeMaterial();
+			Application.#disableButtons(Application.#domElement.btnSlope);
 			ViewerService.showSlope();
 			ViewerService.refreshScene();
 			Application.#domElement.btnSlope.setAttribute('active', 'true');
@@ -695,6 +701,38 @@ export class Application {
 			Application.#domElement.btnSlope.setAttribute('active', 'false');
 			Application.#domElement.btnSlope.style.color = 'rgb(237, 255, 255)';
 			Application.#showToast('Capa de pendientes desactivada');
+		}
+	}
+
+	// Line art layer
+	static async #onBtnLineArtClick() {
+		const lineArtLayerActive = Application.#domElement.btnLineArt.getAttribute('active');
+
+		if (lineArtLayerActive === 'false') {
+			ViewerService.clearGlobeMaterial();
+			Application.#disableButtons(Application.#domElement.btnLineArt);
+			ViewerService.showLineArt();
+			ViewerService.refreshScene();
+			Application.#domElement.btnLineArt.setAttribute('active', 'true');
+			Application.#domElement.btnLineArt.style.color = 'rgb(255, 165, 0)';
+			Application.#showToast('Estilo boceto activado');
+		}
+		else {
+			ViewerService.clearGlobeMaterial();
+			ViewerService.refreshScene();
+			Application.#domElement.btnLineArt.setAttribute('active', 'false');
+			Application.#domElement.btnLineArt.style.color = 'rgb(237, 255, 255)';
+			Application.#showToast('Estilo boceto desactivado');
+		}
+	}
+
+	static #disableButtons(currentButton) {
+		const buttons = [Application.#domElement.btnSlope, Application.#domElement.btnLineArt];
+		for (const button of buttons) {
+			if (button !== currentButton) {
+				button.setAttribute('active', 'false');
+				button.style.color = 'rgb(237, 255, 255)';
+			}
 		}
 	}
 
