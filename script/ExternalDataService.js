@@ -1,6 +1,6 @@
 export class ExternalDataService {
 	static async addGpxDataSource(viewer, dataSourceInfo, markerFilePath) {
-		const dataSource = await viewer.dataSources.add(Cesium.GpxDataSource.load(dataSourceInfo.data, {clampToGround: true}));
+		const dataSource = await viewer.dataSources.add(Cesium.GpxDataSource.load(dataSourceInfo.data, { clampToGround: true }));
 
 		for (const entity of dataSource.entities.values) {
 			entity.availability = undefined;
@@ -20,12 +20,12 @@ export class ExternalDataService {
 		}
 
 		const dataSourceName = dataSource.name ? dataSource.name : dataSourceInfo.fileName
-		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id};
+		const dataSourceReturnInfo = { name: dataSourceName, entitiesCollectionId: dataSource.entities.id };
 		return dataSourceReturnInfo;
 	}
 
 	static async addKmlDataSource(viewer, dataSourceInfo, markerFilePath) {
-		const dataSource = await viewer.dataSources.add(Cesium.KmlDataSource.load(dataSourceInfo.data, {clampToGround: true}));
+		const dataSource = await viewer.dataSources.add(Cesium.KmlDataSource.load(dataSourceInfo.data, { clampToGround: true }));
 
 		for (const entity of dataSource.entities.values) {
 			entity.availability = undefined;
@@ -44,7 +44,7 @@ export class ExternalDataService {
 		}
 
 		const dataSourceName = dataSource.name ? dataSource.name : dataSourceInfo.fileName
-		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id};
+		const dataSourceReturnInfo = { name: dataSourceName, entitiesCollectionId: dataSource.entities.id };
 		return dataSourceReturnInfo;
 	}
 
@@ -69,7 +69,7 @@ export class ExternalDataService {
 		}
 
 		const dataSourceName = dataSource.name ? dataSource.name : dataSourceInfo.fileName
-		const dataSourceReturnInfo = {name: dataSourceName, entitiesCollectionId: dataSource.entities.id};
+		const dataSourceReturnInfo = { name: dataSourceName, entitiesCollectionId: dataSource.entities.id };
 		return dataSourceReturnInfo;
 	}
 
@@ -128,7 +128,7 @@ export class ExternalDataService {
 
 		for (const entity of dataSource.entities.values) {
 			if (entity.id.length <= 36) {
-				entities.push({'key': entity.id, 'title': entity.name ? entity.name : '<i>Sin nombre</i>', 'selected': entity.show, 'parent': entity.parent?.id});
+				entities.push({ 'key': entity.id, 'title': entity.name ? entity.name : '<i>Sin nombre</i>', 'selected': entity.show, 'parent': entity.parent?.id });
 			}
 		}
 

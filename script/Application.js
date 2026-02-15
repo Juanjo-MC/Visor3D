@@ -99,7 +99,8 @@ export class Application {
 
 	static #prepareUI() {
 		if (!Device.isMobile() && Device.hasMouse()) { // Coordinates box only visible on PCs
-			Application.#domElement.statsDock.style.display = 'flex';}
+			Application.#domElement.statsDock.style.display = 'flex';
+		}
 		else { // Panorama button only visible on mobile devices
 			Application.#domElement.btnPanorama.style.display = 'flex';
 		}
@@ -683,7 +684,7 @@ export class Application {
 	// Shaders layers
 
 	// Slope layer
-	static async #onBtnSlopeClick() {
+	static #onBtnSlopeClick() {
 		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
 
 		if (slopeLayerActive === 'false') {
@@ -705,13 +706,14 @@ export class Application {
 	}
 
 	// Line art layer
-	static async #onBtnLineArtClick() {
+	static #onBtnLineArtClick() {
 		const lineArtLayerActive = Application.#domElement.btnLineArt.getAttribute('active');
 
 		if (lineArtLayerActive === 'false') {
 			ViewerService.clearGlobeMaterial();
 			Application.#disableButtons(Application.#domElement.btnLineArt);
-			ViewerService.showLineArt();
+			const sensitivity = Device.isMobile() ? 0.2 : 0.3;
+			ViewerService.showLineArt(sensitivity);
 			ViewerService.refreshScene();
 			Application.#domElement.btnLineArt.setAttribute('active', 'true');
 			Application.#domElement.btnLineArt.style.color = 'rgb(255, 165, 0)';

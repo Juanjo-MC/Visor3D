@@ -347,7 +347,7 @@ export class ViewerService {
 		controller.enableLook = enabled;
 	}
 
-	// Globe materials
+	// Globe custom materials & shaders
 	static clearGlobeMaterial() {
 		ViewerService.#viewer.scene.globe.material = undefined;
 	}
@@ -356,8 +356,8 @@ export class ViewerService {
 		ViewerService.#viewer.scene.globe.material = Shaders.slope(alpha);
 	}
 
-	static showLineArt(alpha = 0.5) {
-		ViewerService.#viewer.scene.globe.material = Shaders.lineArt(alpha);
+	static showLineArt(sensitivity = 0.2, alpha = 0.5) {
+		ViewerService.#viewer.scene.globe.material = Shaders.lineArt(sensitivity, alpha);
 	}
 
 	// Event handlers

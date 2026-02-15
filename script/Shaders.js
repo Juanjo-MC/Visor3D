@@ -1,11 +1,14 @@
 export class Shaders {
 
-    // Slope
-    static slope(alpha = 0.2) {
-        return new Cesium.Material({
-            fabric: {
-                type: 'Slope',
-                source: `
+	// Slope
+	static slope(alpha = 0.2) {
+		//cap alpha to 0.1/1 range
+		alpha = Math.max(0.1, Math.min(1, alpha));
+
+		return new Cesium.Material({
+			fabric: {
+				type: 'Slope',
+				source: `
 					czm_material czm_getMaterial(czm_materialInput materialInput) {
 						czm_material material = czm_getDefaultMaterial(materialInput);
 						float s = materialInput.slope;
@@ -35,87 +38,39 @@ export class Shaders {
 						return material;
 					}
 				`
-            }
-        });
-    }
+			}
+		});
+	}
 
-    // Hillshade
-    static hillshade(alpha = 0.4) {
+	// Line Art
+	static lineArt(sensitivity = 0.2, alpha = 0.5) {
+		// cap alpha to 0.5/1 range		
+		alpha = Math.max(0.5, Math.min(1, alpha));
+		// cap sensitivity to 0.2/0.5 range
+		sensitivity = Math.max(0.2, Math.min(0.5, sensitivity));
 
-        return new Cesium.Material({
-            fabric: {
-                type: 'Hillshade',
-
-                uniforms: {
-                    u_shadowOpacity: alpha,
-                    u_sharpness: 3.0,
-                },
-
-                source: `
-						czm_material czm_getMaterial(czm_materialInput materialInput) {
-							czm_material material = czm_getDefaultMaterial(materialInput);
-	
-							// Get the normal from the terrain
-							vec3 n = materialInput.normalEC;
-	
-							// Sunlight direction (NW)
-							vec3 L = normalize(vec3(-1.0, 1.0, 1.2));
-	
-							// Slope intensity math
-							float dotProduct = dot(n, L);
-							float intensity = clamp(dotProduct, 0.0, 1.0);
-	
-							// Higher power means shadows stay "tighter" to the steep areas
-							intensity = pow(intensity, u_sharpness);
-	
-							// Color and Transparency
-							// We keep the shadow pure black but make it much more transparent
-							material.diffuse = vec3(0.0);
-							material.alpha = (1.0 - intensity) * u_shadowOpacity;
-	
-							return material;
-						}
-					`
-            }
-        });
-    }
-
-    // Line Art
-    static lineArt(alpha = 0.5) {
-        return new Cesium.Material({
-            fabric: {
-                type: 'LineArt',
-                uniforms: {
-                    u_lineColor: new Cesium.Color(0.0, 0.0, 0.0, 0.0),
-                    u_bgColor: new Cesium.Color(0.95, 0.97, 1.0, 0.0),
-                    u_sensitivity: 0.2 // Lower = fewer lines, Higher = more detail
-                },
-                source: `
+		return new Cesium.Material({
+			fabric: {
+				type: 'LineArt',
+				uniforms: {
+					u_lineColor: new Cesium.Color(0.15, 0.15, 0.2, 0.0),
+					u_bgColor: new Cesium.Color(0.95, 0.97, 1.0, 0.0),
+					u_sensitivity: sensitivity // Lower = more detail (sensitive), Higher = fewer lines (selective)
+				},
+				source: `
                     czm_material czm_getMaterial(czm_materialInput materialInput) {
                         czm_material material = czm_getDefaultMaterial(materialInput);
-
-                        // Get the normal from the terrain
                         vec3 n = materialInput.normalEC;
-
-                        // Calculate the "Sharpness" of the terrain
-                        // We use the derivatives of the normal to find where the terrain 'bends'
                         float delta = length(dFdx(n)) + length(dFdy(n));
-                
-                        // Create the Line Art effect
-                        // If delta is high, it's a ridge (lineColor). If low, it's flat (bgColor).
                         float lineFactor = smoothstep(0.01, u_sensitivity, delta);
-                
-                        // Fake a gentle 'top-down' shadow so it's not purely flat white
                         float ambient = clamp(n.z, 0.8, 1.0); 
-
                         vec3 finalColor = mix(u_bgColor.rgb * ambient, u_lineColor.rgb, lineFactor);
-
                         material.diffuse = finalColor;
                         material.alpha = ${alpha.toFixed(1)};                
                         return material;
                     }
                 `
-            }
-        });
-    }
+			}
+		});
+	}
 }

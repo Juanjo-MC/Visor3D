@@ -54,7 +54,7 @@ export class DeviceHeadingTracker {
 	}
 
 	static #startAbsoluteOrientationSensor() {
-		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({frequency: DeviceHeadingTracker.#frequency, referenceFrame: 'screen'});
+		DeviceHeadingTracker.#orientationSensor = new AbsoluteOrientationSensor({ frequency: DeviceHeadingTracker.#frequency, referenceFrame: 'screen' });
 
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
 			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
@@ -63,7 +63,7 @@ export class DeviceHeadingTracker {
 				return;
 			}
 
-			const quaternion = {x: q[0], y: q[1], z: q[2], w: q[3]};
+			const quaternion = { x: q[0], y: q[1], z: q[2], w: q[3] };
 			let heading;
 
 			if (DeviceHeadingTracker.#isDeviceHorizontal(quaternion)) {
