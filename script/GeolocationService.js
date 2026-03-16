@@ -1,17 +1,38 @@
 export class GeolocationService {
-	static #intervalId = null;
+	static #trackingActive = false;
+	static #timeoutId = null;
 
 	static trackPosition(successFunction, errorFunction, options, interval = 5000) {
-		navigator.geolocation.getCurrentPosition(successFunction, errorFunction, options);
-		GeolocationService.#intervalId = setInterval(() => {
-			navigator.geolocation.getCurrentPosition(successFunction, errorFunction, options);
-		}, interval);
+		GeolocationService.stopTrackingPosition();
+		GeolocationService.#trackingActive = true;
+
+		const runPoll = () => {
+			navigator.geolocation.getCurrentPosition(
+				(position) => {
+					if (!GeolocationService.#trackingActive) {
+						return;
+					}
+
+					successFunction(position);
+
+					if (GeolocationService.#trackingActive) {
+						GeolocationService.#timeoutId = setTimeout(runPoll, interval);
+					}
+				},
+				(error) => errorFunction(error),
+				options
+			);
+		};
+
+		runPoll();
 	}
 
 	static stopTrackingPosition() {
-		if (GeolocationService.#intervalId !== null) {
-			clearInterval(GeolocationService.#intervalId);
-			GeolocationService.#intervalId = null;
+		GeolocationService.#trackingActive = false;
+
+		if (GeolocationService.#timeoutId !== null) {
+			clearTimeout(GeolocationService.#timeoutId);
+			GeolocationService.#timeoutId = null;
 		}
 	}
 }

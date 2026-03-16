@@ -193,17 +193,13 @@ export class ViewerService {
 		const surfaceNormal = Cesium.Cartesian3.cross(v0, v1, new Cesium.Cartesian3());
 		Cesium.Cartesian3.normalize(surfaceNormal, surfaceNormal);
 		const upVector = viewer.scene.globe.ellipsoid.geodeticSurfaceNormal(p0);
+		const slope = Cesium.Math.toDegrees(Cesium.Cartesian3.angleBetween(surfaceNormal, upVector));
 
 		return {
 			height: positions[0].height,
-			slope: ViewerService.#calculateSlope(surfaceNormal, upVector),
+			slope: slope,
 			aspect: ViewerService.#calculateAspect(surfaceNormal, upVector, p0)
 		};
-	}
-
-	static #calculateSlope(surfaceNormal, upVector) {
-		const angleInRadians = Cesium.Cartesian3.angleBetween(surfaceNormal, upVector);
-		return Cesium.Math.toDegrees(angleInRadians);
 	}
 
 	static #calculateAspect(surfaceNormal, upVector, p0) {
@@ -347,7 +343,7 @@ export class ViewerService {
 		controller.enableLook = enabled;
 	}
 
-	// Globe custom materials & shaders
+	// Globe custom materials
 	static clearGlobeMaterial() {
 		ViewerService.#viewer.scene.globe.material = undefined;
 	}

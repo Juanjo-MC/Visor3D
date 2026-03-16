@@ -45,7 +45,6 @@ export class Application {
 	static #cameraHeading = null;					// Current camera heading
 	static #geocoderMarkerId = null;				// Entity Id of geocoder pin
 	static #geolocationMarkerId = null;				// Entity Id of geolocation position pin
-	static #isGeolocationStopping = false;			// Prevents a race condition when stopping geolocation before the first position update
 
 	// DOM elements
 	static #domElement = Object.freeze({
@@ -429,7 +428,10 @@ export class Application {
 			if (slopeDetails) {
 				altitude = slopeDetails.height.toFixed(0) + ' m';
 				slope = slopeDetails.slope.toFixed(0) + '°';
-				aspect = Utils.degreesToCardinalDirection(slopeDetails.aspect);
+
+				if (slopeDetails.slope > 1) { // Aspect is only relevant if there is a slope
+					aspect = Utils.degreesToCardinalDirection(slopeDetails.aspect);
+				}
 			}
 		}
 
@@ -681,9 +683,9 @@ export class Application {
 		ViewerService.refreshScene();
 	}
 
-	// Shaders layers
+	// Layers
 
-	// Slope layer
+	// Slope
 	static #onBtnSlopeClick() {
 		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
 
@@ -705,7 +707,7 @@ export class Application {
 		}
 	}
 
-	// Line art layer
+	// Line art
 	static #onBtnLineArtClick() {
 		const lineArtLayerActive = Application.#domElement.btnLineArt.getAttribute('active');
 
@@ -717,14 +719,14 @@ export class Application {
 			ViewerService.refreshScene();
 			Application.#domElement.btnLineArt.setAttribute('active', 'true');
 			Application.#domElement.btnLineArt.style.color = 'rgb(255, 165, 0)';
-			Application.#showToast('Estilo boceto activado');
+			Application.#showToast('Capa \'boceto\' activada');
 		}
 		else {
 			ViewerService.clearGlobeMaterial();
 			ViewerService.refreshScene();
 			Application.#domElement.btnLineArt.setAttribute('active', 'false');
 			Application.#domElement.btnLineArt.style.color = 'rgb(237, 255, 255)';
-			Application.#showToast('Estilo boceto desactivado');
+			Application.#showToast('Capa \'boceto\' desactivada');
 		}
 	}
 
@@ -768,21 +770,12 @@ export class Application {
 			const entityId = MarkersManager.createMarker(position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
 			MarkersManager.addCircleToMarker(entityId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
 			Application.#geolocationMarkerId = entityId;
+			ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
 
-			if (!Application.#isGeolocationStopping) {
-				ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
-			}
 		}
 		else {
 			MarkersManager.updateMarker(Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
 			MarkersManager.updateMarkerCircle(Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
-			ViewerService.refreshScene();
-		}
-
-		if (Application.#isGeolocationStopping) {
-			MarkersManager.removeMarker(Application.#geolocationMarkerId);
-			Application.#geolocationMarkerId = null;
-			Application.#isGeolocationStopping = false;
 			ViewerService.refreshScene();
 		}
 	}
@@ -813,7 +806,6 @@ export class Application {
 	}
 
 	static #stopGeolocation() {
-		Application.#isGeolocationStopping = true;
 		GeolocationService.stopTrackingPosition();
 		Application.#domElement.btnUserPosition.setAttribute('active', 'false');
 		Application.#domElement.btnUserPosition.style.color = 'rgb(237, 255, 255)';
@@ -821,7 +813,6 @@ export class Application {
 		if (Application.#geolocationMarkerId) {
 			MarkersManager.removeMarker(Application.#geolocationMarkerId);
 			Application.#geolocationMarkerId = null;
-			Application.#isGeolocationStopping = false;
 		}
 
 		ViewerService.refreshScene();
