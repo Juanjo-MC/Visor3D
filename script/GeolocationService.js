@@ -6,7 +6,7 @@ export class GeolocationService {
 		GeolocationService.stopTrackingPosition();
 		GeolocationService.#trackingActive = true;
 
-		const runPoll = () => {
+		const requestPosition = () => {
 			navigator.geolocation.getCurrentPosition(
 				(position) => {
 					if (!GeolocationService.#trackingActive) {
@@ -16,15 +16,25 @@ export class GeolocationService {
 					successFunction(position);
 
 					if (GeolocationService.#trackingActive) {
-						GeolocationService.#timeoutId = setTimeout(runPoll, interval);
+						GeolocationService.#timeoutId = setTimeout(requestPosition, interval);
 					}
 				},
-				(error) => errorFunction(error),
+				(error) => {
+					if (!GeolocationService.#trackingActive) {
+						return;
+					}
+
+					errorFunction(error);
+
+					if (GeolocationService.#trackingActive) {
+						GeolocationService.#timeoutId = setTimeout(requestPosition, interval);
+					}
+				},
 				options
 			);
 		};
 
-		runPoll();
+		requestPosition();
 	}
 
 	static stopTrackingPosition() {

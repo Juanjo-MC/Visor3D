@@ -4,7 +4,7 @@ import { ViewerService } from './ViewerService.js';
 import { POIFinder } from './POIFinder.js';
 import { POIManager } from './POIManager.js';
 import { CompassService } from './CompassService.js';
-import { ExternalDataService } from './ExternalDataService.js';
+import { ExternalDataManager } from './ExternalDataManager.js';
 import { GeocodingService } from './GeocodingService.js';
 import { GeolocationService } from './GeolocationService.js';
 import { MarkersManager } from './MarkersManager.js';
@@ -140,71 +140,35 @@ export class Application {
 		Application.#domElement.btnLineArt.addEventListener('click', Application.#onBtnLineArtClick);
 	}
 
-	static #prepareScene() { // TO DO: refactor. This function is dificult to follow, it should be splitted on smaller logical ones
+	static #prepareScene() {
 		// Restore last used cartography
-		let lastCartography;
+		let lastUsedCartography = Application.getLastUsedCartography();
 
-		try {
-			lastCartography = window.localStorage.getItem('lastCartography');
-		}
-		catch (err) {
-			console.error(err);
+		if (lastUsedCartography) {
+			ViewerService.setImagery(lastUsedCartography);
 		}
 
-		if (lastCartography) {
-			ViewerService.setImagery(lastCartography);
-		}
-
-		let lat = parseFloat(decodeURIComponent(Utils.getQueryStringValue('lat')).replace(/ /g, ''));
-		let lon = parseFloat(decodeURIComponent(Utils.getQueryStringValue('lon')).replace(/ /g, ''));
-		let name = decodeURIComponent(Utils.getQueryStringValue('name')).trim();
-		let cameraAltitude = Application.#DEFAULT_CAMERA_ALTITUDE;
-		let cameraHeading = Application.#DEFAULT_CAMERA_HEADING;
-		let cameraPitch = Application.#DEFAULT_CAMERA_PITCH;
-
-		if (Utils.isValidLatitude(lat) && Utils.isValidLongitude(lon)) {
-
-			if (name === 'null' || name.length === 0) {
-				let description = `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Latitud</strong>: ${lat.toFixed(6)}</a><br><br>`;
-				description += `<a href="geo:${lat.toFixed(6)},${lon.toFixed(6)}"><strong>Longitud</strong>: ${lon.toFixed(6)}</a>`;
-				MarkersManager.createMarker(lat, lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
+		// Set initial camera position based on the following priority: query string parameters, saved position in local storage, default fallback position
+		const cameraInitialPosition = Application.#getCameraInitialPosition();				
+				
+		if (Application.#markerNeeded()) {
+			const name = decodeURIComponent(Utils.getQueryStringValue('name')).trim();
+			
+			if (name === 'null' || name.length === 0) { // If there is no 'name' parameter in the query string, show a marker
+				let description = `<a href="geo:${cameraInitialPosition.lat.toFixed(6)},${cameraInitialPosition.lon.toFixed(6)}"><strong>Latitud</strong>: ${cameraInitialPosition.lat.toFixed(6)}</a><br><br>`;
+				description += `<a href="geo:${cameraInitialPosition.lat.toFixed(6)},${cameraInitialPosition.lon.toFixed(6)}"><strong>Longitud</strong>: ${cameraInitialPosition.lon.toFixed(6)}</a>`;
+				MarkersManager.createMarker(cameraInitialPosition.lat, cameraInitialPosition.lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
 			}
-			else {
-				POIManager.addPOIToViewer(null, name, lat, lon, 10, 50000, Cesium.Color.fromBytes(226, 255, 226, 190), true);
-			}
-		}
-		else {
-			// check for saved camera position
-			let jsonSavedCameraPosition;
-
-			try {
-				jsonSavedCameraPosition = window.localStorage.getItem('lastCameraPosition');
-			}
-			catch (err) {
-				console.error(err);
-			}
-
-			if (jsonSavedCameraPosition) {
-				const savedCameraPosition = JSON.parse(jsonSavedCameraPosition);
-				lat = savedCameraPosition.lat;
-				lon = savedCameraPosition.lon;
-				cameraAltitude = savedCameraPosition.altitude;
-				cameraHeading = savedCameraPosition.heading;
-				cameraPitch = savedCameraPosition.pitch;
-			}
-			else {
-				// no coordinates have been received or they are invalid and there is no previous position saved in the local storage, display the map in the default position
-				lat = Application.#FALLBACK_MAP_CENTER_LAT;
-				lon = Application.#FALLBACK_MAP_CENTER_LON;
-				cameraAltitude = Application.#FALLBACK_CAMERA_ALTITUDE;
-				cameraHeading = Application.#FALLBACK_CAMERA_HEADING;
-				cameraPitch = Application.#FALLBACK_CAMERA_PITCH;
+			else  { // Else add a POI that will show a label
+				POIManager.addPOIToViewer(null, name, cameraInitialPosition.lat, cameraInitialPosition.lon, 10, 50000, Cesium.Color.fromBytes(226, 255, 226, 190), true);
 			}
 		}
 
-		Application.#latestLoadedPOIsCameraPosition.lat = lat;
-		Application.#latestLoadedPOIsCameraPosition.lon = lon;
-		const pois = POIFinder.findPOIsAround(lat, lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
+		Application.#latestLoadedPOIsCameraPosition.lat = cameraInitialPosition.lat;
+		Application.#latestLoadedPOIsCameraPosition.lon = cameraInitialPosition.lon;
+		
+		// Load POIs around the initial camera position
+		const pois = POIFinder.findPOIsAround(cameraInitialPosition.lat, cameraInitialPosition.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
 
 		const renderingOptions = {
 			cumbresVisible: false,
@@ -215,7 +179,81 @@ export class Application {
 		}
 
 		POIManager.addPOIsToViewer(pois, renderingOptions);
-		ViewerService.flyToPosition(lat, lon, cameraAltitude, cameraHeading, cameraPitch);
+		ViewerService.flyToPosition(cameraInitialPosition.lat, cameraInitialPosition.lon, cameraInitialPosition.altitude, cameraInitialPosition.heading, cameraInitialPosition.pitch);
+	}
+
+	static getLastUsedCartography() {
+		let lastCartography;
+
+		try {
+			lastCartography = window.localStorage.getItem('lastCartography');
+		}
+		catch (err) {
+			console.error(err);
+		}
+
+		return lastCartography;
+	}
+
+	static #getCameraInitialPosition() {
+		const searchParams = new URLSearchParams(window.location.search);
+		const latParam = searchParams.get('lat');
+		const lonParam = searchParams.get('lon');
+		let lat = parseFloat(decodeURIComponent(latParam).replace(/ /g, ''));
+		let lon = parseFloat(decodeURIComponent(lonParam).replace(/ /g, ''));
+		let altitude;
+		let heading;
+		let pitch;
+
+		// If valid coordinates are provided through the query string, use them as the initial camera position
+		if (Utils.isValidLatitude(lat) && Utils.isValidLongitude(lon)) {
+			altitude = Application.#DEFAULT_CAMERA_ALTITUDE;
+			heading = Application.#DEFAULT_CAMERA_HEADING;
+			pitch = Application.#DEFAULT_CAMERA_PITCH;
+			return { lat, lon, altitude, heading, pitch };
+		}
+
+		// Check if there is a saved camera position in the local storage and use it as the initial camera position
+		let jsonSavedCameraPosition;
+
+		try {
+			jsonSavedCameraPosition = window.localStorage.getItem('lastCameraPosition');
+		}
+		catch (err) {
+			console.error(err);
+		}
+
+		if (jsonSavedCameraPosition) {
+			const savedCameraPosition = JSON.parse(jsonSavedCameraPosition);
+			lat = savedCameraPosition.lat;
+			lon = savedCameraPosition.lon;
+			altitude = savedCameraPosition.altitude;
+			heading = savedCameraPosition.heading;
+			pitch = savedCameraPosition.pitch;
+			return { lat, lon, altitude, heading, pitch };
+		}
+
+		// No coordinates have been received or they are invalid and there is no previous position saved in the local storage, return the default position
+		lat = Application.#FALLBACK_MAP_CENTER_LAT;
+		lon = Application.#FALLBACK_MAP_CENTER_LON;
+		altitude = Application.#FALLBACK_CAMERA_ALTITUDE;
+		heading = Application.#FALLBACK_CAMERA_HEADING;
+		pitch = Application.#FALLBACK_CAMERA_PITCH;
+		return { lat, lon, altitude, heading, pitch };
+	}
+
+	static #markerNeeded(){
+		const searchParams = new URLSearchParams(window.location.search);
+		const latParam = searchParams.get('lat');
+		const lonParam = searchParams.get('lon');
+		
+		if (!latParam || !lonParam) {
+			return false;
+		}
+		
+		const lat = parseFloat(decodeURIComponent(latParam).replace(/ /g, ''));
+		const lon = parseFloat(decodeURIComponent(lonParam).replace(/ /g, ''));		
+		return Utils.isValidLatitude(lat) && Utils.isValidLongitude(lon);
 	}
 
 	static #showToast(message, type = Application.#toastType.INFO, duration = 5000) {
@@ -555,16 +593,16 @@ export class Application {
 
 				switch (fileExtension) {
 					case 'gpx':
-						dataSourceInfo = await ExternalDataService.addGpxDataSource(ViewerService.viewer, { data: file, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
+						dataSourceInfo = await ExternalDataManager.addGpxDataSource(ViewerService.viewer, { data: file, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					case 'kml':
 					case 'kmz':
-						dataSourceInfo = await ExternalDataService.addKmlDataSource(ViewerService.viewer, { data: file, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
+						dataSourceInfo = await ExternalDataManager.addKmlDataSource(ViewerService.viewer, { data: file, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					case 'json':
 					case 'geojson':
 						const jsonData = JSON.parse(await file.text());
-						dataSourceInfo = await ExternalDataService.addGeoJsonDataSource(ViewerService.viewer, { data: jsonData, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
+						dataSourceInfo = await ExternalDataManager.addGeoJsonDataSource(ViewerService.viewer, { data: jsonData, fileName: file.name }, Application.#markerPins.EXTERNAL_DATA_WAYPOINTS);
 						break;
 					default:
 						Application.#showToast(`Tipo de fichero no soportado: ${fileExtension}`, Application.#toastType.WARNING);
@@ -573,7 +611,7 @@ export class Application {
 
 				const option = new Option(dataSourceInfo.name, dataSourceInfo.entitiesCollectionId);
 				Application.#domElement.ddlDataSources.add(option);
-				ViewerService.flyToDataSource(ExternalDataService.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId));
+				ViewerService.flyToDataSource(ExternalDataManager.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId));
 			}
 			catch (err) {
 				console.error(err);
@@ -589,8 +627,8 @@ export class Application {
 		const entitiesId = Application.#domElement.ddlDataSources.value;
 
 		if (entitiesId !== '') {
-			ExternalDataService.updateDataSourceVisibility(ViewerService.viewer, entitiesId, true);
-			ViewerService.flyToDataSource(ExternalDataService.getDataSource(ViewerService.viewer, entitiesId));
+			ExternalDataManager.updateDataSourceVisibility(ViewerService.viewer, entitiesId, true);
+			ViewerService.flyToDataSource(ExternalDataManager.getDataSource(ViewerService.viewer, entitiesId));
 		}
 	}
 
@@ -598,7 +636,7 @@ export class Application {
 		const entitiesId = Application.#domElement.ddlDataSources.value;
 
 		if (entitiesId !== '') {
-			ExternalDataService.updateDataSourceVisibility(ViewerService.viewer, entitiesId, false);
+			ExternalDataManager.updateDataSourceVisibility(ViewerService.viewer, entitiesId, false);
 			ViewerService.refreshScene();
 		}
 	}
@@ -608,7 +646,7 @@ export class Application {
 
 		if (entitiesId !== '') {
 			Application.#domElement.ddlDataSources.remove(Application.#domElement.ddlDataSources.selectedIndex);
-			ExternalDataService.removeDataSource(ViewerService.viewer, entitiesId);
+			ExternalDataManager.removeDataSource(ViewerService.viewer, entitiesId);
 			ViewerService.refreshScene();
 		}
 	}
@@ -649,7 +687,6 @@ export class Application {
 					}
 
 					searchResultsList.style.display = 'block';
-
 				}
 			}
 		}
@@ -660,15 +697,21 @@ export class Application {
 	}
 
 	static async #onSeachResultsListChange() {
-		MarkersManager.removeMarker(Application.#geocoderMarkerId);
-		Application.#geocoderMarkerId = null;
-		const resultId = Application.#domElement.searchResultsList.value;
-		const resultType = Application.#domElement.searchResultsList.selectedOptions[0].attributes.type.nodeValue;
-		const geocoderResult = await GeocodingService.find(resultId, resultType);
-		const resultAltitude = await ViewerService.getElevation(geocoderResult.lat, geocoderResult.lng);
-		const description = GeocodingService.getHtml(geocoderResult, resultAltitude);
-		Application.#geocoderMarkerId = MarkersManager.createMarker(geocoderResult.lat, geocoderResult.lng, geocoderResult.fullAddress, description, Application.#markerPins.GEOCODING_RESULT);
-		ViewerService.flyToPosition(geocoderResult.lat, geocoderResult.lng, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
+		try {
+			MarkersManager.removeMarker(Application.#geocoderMarkerId);
+			Application.#geocoderMarkerId = null;
+			const resultId = Application.#domElement.searchResultsList.value;
+			const resultType = Application.#domElement.searchResultsList.selectedOptions[0].attributes.type.nodeValue;
+			const geocoderResult = await GeocodingService.find(resultId, resultType);
+			const resultAltitude = await ViewerService.getElevation(geocoderResult.lat, geocoderResult.lng);
+			const description = GeocodingService.getHtml(geocoderResult, resultAltitude);
+			Application.#geocoderMarkerId = MarkersManager.createMarker(geocoderResult.lat, geocoderResult.lng, geocoderResult.fullAddress, description, Application.#markerPins.GEOCODING_RESULT);
+			ViewerService.flyToPosition(geocoderResult.lat, geocoderResult.lng, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
+		}
+		catch (err) {
+			console.error(err);
+			Application.#showToast(`Se ha producido un error en el geocodificador: ${err.message}`, Application.#toastType.ERROR);
+		}
 	}
 
 	static #onBtnClearSearchClick() {
@@ -732,6 +775,7 @@ export class Application {
 
 	static #disableButtons(currentButton) {
 		const buttons = [Application.#domElement.btnSlope, Application.#domElement.btnLineArt];
+
 		for (const button of buttons) {
 			if (button !== currentButton) {
 				button.setAttribute('active', 'false');
@@ -742,29 +786,28 @@ export class Application {
 
 	// Geolocation
 	static #onBtnUserPositionClick() {
-		try {
+		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
+		Device.vibrate();
 
-			Device.vibrate();
-			const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
-
-			if (geolocationActive === 'false') {
-				GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, { enableHighAccuracy: true, timeout: 25000 }, 30000);
-				Application.#domElement.btnUserPosition.setAttribute('active', 'true');
-				Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
-				Application.#showToast('Geolocalización activada');
-			}
-			else {
-				Application.#stopGeolocation();
-				Application.#showToast('Geolocalización desactivada');
-			}
+		if (geolocationActive === 'false') {
+			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 }, 30000);
+			Application.#domElement.btnUserPosition.setAttribute('active', 'true');
+			Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
+			Application.#showToast('Geolocalización activada');
 		}
-		catch (err) {
-			Application.#processGeolocationError(err);
+		else {
+			Application.#stopGeolocation();
+			Application.#showToast('Geolocalización desactivada');
 		}
 	}
 
 	static async #processGeolocationPosition(position) {
 		const description = await Application.#getUserPositionDescription(position);
+		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
+
+		if (geolocationActive === 'false') {
+			return;
+		}
 
 		if (!Application.#geolocationMarkerId) {
 			const entityId = MarkersManager.createMarker(position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
@@ -799,10 +842,13 @@ export class Application {
 	}
 
 	static #processGeolocationError(error) {
+		const isTimeoutError = error.code === GeolocationPositionError.TIMEOUT;
 		console.error(error);
-		Application.#showToast(`Se ha producido un error en la geolocalización: ${error.message}`, Application.#toastType.ERROR);
-		Application.#stopGeolocation();
-		Application.#showToast('Geolocalización desactivada');
+
+		if (!isTimeoutError) {
+			Application.#showToast(`Se ha producido un error en la geolocalización: ${error.message}`, Application.#toastType.ERROR);
+			Application.#stopGeolocation();
+		}
 	}
 
 	static #stopGeolocation() {

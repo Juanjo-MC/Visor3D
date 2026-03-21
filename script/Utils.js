@@ -51,10 +51,11 @@ export class Utils {
 		return Array.from(aSet.difference(bSet));
 	}
 
-	static degreesToCardinalDirection(degrees) {
-		const normalizedDegrees = ((degrees % 360) + 360) % 360;
+	static degreesToCardinalDirection(degrees) {		
 		const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-		const index = Math.floor(((normalizedDegrees + 22.5) % 360) / 45);
+		const slice = 360 / directions.length;
+		const normalizedDegrees = ((degrees % 360) + 360) % 360;
+		const index = Math.floor(((normalizedDegrees + slice / 2) % 360) / slice);
 		return directions[index];
 	}
 }
