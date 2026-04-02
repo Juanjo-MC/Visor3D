@@ -541,9 +541,9 @@ export class Application {
 	}
 
 	static async #setPOIsVisibility(poiType, visible) {
-		await Application.#showSpinner();
+		//await Application.#showSpinner();
 		POIManager.setPOIsVisibility(poiType, visible);
-		await Application.#hideSpinner();
+		//await Application.#hideSpinner();
 		ViewerService.refreshScene();
 	}
 
@@ -611,7 +611,8 @@ export class Application {
 
 				const option = new Option(dataSourceInfo.name, dataSourceInfo.entitiesCollectionId);
 				Application.#domElement.ddlDataSources.add(option);
-				ViewerService.flyToDataSource(ExternalDataManager.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId));
+				const dataSource = ExternalDataManager.getDataSource(ViewerService.viewer, dataSourceInfo.entitiesCollectionId);
+				ViewerService.flyToDataSource(dataSource);
 			}
 			catch (err) {
 				console.error(err);
