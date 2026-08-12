@@ -1,3 +1,5 @@
+import { Utils } from './Utils.js';
+
 export class GeocodingService {
 
 	// CartoCiudad documentation
@@ -7,12 +9,12 @@ export class GeocodingService {
 
 	static async getCandidates(searchTerm) {
 		const url = `${GeocodingService.#BASE_URL}candidates?q=${encodeURIComponent(searchTerm.trim())}`;
-		return await GeocodingService.#getJSONData(url);
+		return await Utils.getJSONData(url);
 	}
 
 	static async find(id, type) {
 		const url = `${GeocodingService.#BASE_URL}find?id=${id}&type=${type}`;
-		const result = await GeocodingService.#getJSONData(url);
+		const result = await Utils.getJSONData(url);
 		result.fullAddress = GeocodingService.#getFullAddress(result);
 		return result;
 	}
@@ -32,45 +34,29 @@ export class GeocodingService {
 		}
 
 		if (geocoderResult.tip_via !== null) {
-			html += `<br><br><strong>Tipo de vía</strong>: ${geocoderResult.tip_via}`;
+			html += `<br><br><strong>Tipo de vía</strong>: ${Utils.escapeHtml(geocoderResult.tip_via)}`;
 		}
 
 		if (geocoderResult.poblacion !== null) {
-			html += `<br><br><strong>Población</strong>: ${geocoderResult.poblacion}`;
+			html += `<br><br><strong>Población</strong>: ${Utils.escapeHtml(geocoderResult.poblacion)}`;
 		}
 
 		if (geocoderResult.muni !== null) {
-			html += `<br><br><strong>Municipio</strong>: ${geocoderResult.muni}`;
+			html += `<br><br><strong>Municipio</strong>: ${Utils.escapeHtml(geocoderResult.muni)}`;
 		}
 
 		if (geocoderResult.province !== null) {
-			html += `<br><br><strong>Provincia</strong>: ${geocoderResult.province}`;
+			html += `<br><br><strong>Provincia</strong>: ${Utils.escapeHtml(geocoderResult.province)}`;
 		}
 
 		if (geocoderResult.comunidadAutonoma !== null) {
-			html += `<br><br><strong>Comunidad Autónoma</strong>: ${geocoderResult.comunidadAutonoma}`;
+			html += `<br><br><strong>Comunidad Autónoma</strong>: ${Utils.escapeHtml(geocoderResult.comunidadAutonoma)}`;
 		}
 
 		if (geocoderResult.refCatastral !== null) {
-			html += `<br><br><strong>Referencia catastral</strong>: ${geocoderResult.refCatastral}`;
+			html += `<br><br><strong>Referencia catastral</strong>: ${Utils.escapeHtml(geocoderResult.refCatastral)}`;
 		}
 
 		return html;
-	}
-
-	static async #getJSONData(url) {
-		try {
-			const response = await fetch(url);
-
-			if (!response.ok) {
-				throw new Error(`Response status: ${response.status}`);
-			}
-
-			const json = await response.json();
-			return json;
-		}
-		catch (err) {
-			throw err;
-		}
 	}
 }

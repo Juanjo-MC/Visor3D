@@ -30,6 +30,7 @@ export class MarkersManager {
 
 	static addCircleToMarker(entityId, radius, material, fill) {
 		const entity = MarkersManager.#markersDataSource.entities.getById(entityId);
+		
 		entity.ellipse = new Cesium.EllipseGraphics({
 			semiMajorAxis: radius,
 			semiMinorAxis: radius,

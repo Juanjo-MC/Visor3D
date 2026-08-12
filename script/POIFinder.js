@@ -1,4 +1,4 @@
-import KDBush from 'https://cdn.jsdelivr.net/npm/kdbush/+esm';
+import KDBush from 'https://cdn.jsdelivr.net/npm/kdbush@latest/+esm';
 import * as GeoKDBush from 'https://cdn.jsdelivr.net/npm/geokdbush@latest/+esm';
 
 export class POIFinder {

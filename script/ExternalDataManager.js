@@ -93,11 +93,7 @@ export class ExternalDataManager {
 		label.showBackground = true;
 		label.backgroundColor = Cesium.Color.fromBytes(248, 248, 248, 190);
 		label.backgroundPadding = new Cesium.Cartesian2(3, 3);
-
-		// Increase label size to improve readability on high DPI displays
-		if (window.devicePixelRatio > 2) {
-			label.scale = 1.2;
-		}
+		label.scale = window.devicePixelRatio > 2 ? 1.2 : 1; // On high DPI displays, increase label size to improve readability
 	}
 
 	static updateDataSourceVisibility(viewer, entitiesId, visible) {
@@ -114,9 +110,8 @@ export class ExternalDataManager {
 	static getDataSource(viewer, entitiesCollectionId) {
 		for (let i = 0; i < viewer.dataSources.length; i++) {
 			const dataSource = viewer.dataSources.get(i);
-			const entityCollection = dataSource.entities;
 
-			if (entityCollection.id === entitiesCollectionId) {
+			if (dataSource.entities.id === entitiesCollectionId) {
 				return dataSource;
 			}
 		}

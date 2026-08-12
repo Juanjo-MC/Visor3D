@@ -13,9 +13,6 @@ export class POIManager {
 		MASA_DE_AGUA: Cesium.Color.fromBytes(69, 127, 176, 190),
 	});
 
-	// Vertical line for the billboard
-	static #WHITE_LINE_2X15_PX = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAPCAYAAADOKB76AAAAF0lEQVR4nGP8////fwYGBgYmBigYEAYAGHwEGkfF28sAAAAASUVORK5CYII=';
-
 	static async initialize(viewer) {
 		POIManager.#poiDataSource = await viewer.dataSources.add(new Cesium.CustomDataSource('poiDataSource'));
 	}
@@ -58,6 +55,12 @@ export class POIManager {
 		poiEntity.show = false;
 	}
 
+	// POI label constant properties
+	static #labelScale = window.devicePixelRatio > 2 ? 1.2 : 1; // On high DPI displays, increase label size to improve readability
+	static #labelScaleByDistance = new Cesium.NearFarScalar(100, 1.5, 20000, 0.4);	
+	static #labelPixelOffset = new Cesium.Cartesian2(0, -15);
+	static #labelBackgroundPadding = new Cesium.Cartesian2(3, 3);
+
 	static setPoiLabelProperties(poiId, labelText, removeScaleByDistance, visibilityDistance = null) {
 		const poiEntity = POIManager.#getPOIEntity(poiId);
 		poiEntity.label.text = labelText;
@@ -66,7 +69,7 @@ export class POIManager {
 			poiEntity.label.scaleByDistance = null;
 		}
 		else {
-			poiEntity.label.scaleByDistance = new Cesium.NearFarScalar(100, 1.5, 20000, 0.4)
+			poiEntity.label.scaleByDistance = POIManager.#labelScaleByDistance;
 		}
 
 		if (visibilityDistance === null) {
@@ -89,45 +92,47 @@ export class POIManager {
 
 	static addPOIsToViewer(poisList, renderingOptions) {
 		POIManager.#poiDataSource.entities.suspendEvents();
+		const distanceDisplayCondition = new Cesium.DistanceDisplayCondition(renderingOptions.minVisibilityDistance, renderingOptions.maxVisibilityDistance);
+
+		const poiTypeConfig = {
+			[POIManager.poiType.CUMBRE]: {
+				color: POIManager.#poiLabelColor.CUMBRE,
+				visible: renderingOptions.cumbresVisible
+			},
+			[POIManager.poiType.POBLACION]: {
+				color: POIManager.#poiLabelColor.POBLACION,
+				visible: renderingOptions.poblacionesVisible
+			},
+			[POIManager.poiType.MASA_DE_AGUA]: {
+				color: POIManager.#poiLabelColor.MASA_DE_AGUA,
+				visible: renderingOptions.masasDeAguaVisible
+			}
+		};
 
 		for (const poi of poisList) {
 			const poiType = POIManager.getPOIType(poi.id)
-			let labelColor;
-			let poiVisible;
-
-			if (poiType === POIManager.poiType.CUMBRE) {
-				labelColor = POIManager.#poiLabelColor.CUMBRE;
-				poiVisible = renderingOptions.cumbresVisible;
-			}
-			else if (poiType === POIManager.poiType.POBLACION) {
-				labelColor = POIManager.#poiLabelColor.POBLACION;
-				poiVisible = renderingOptions.poblacionesVisible;
-			}
-			else if (poiType === POIManager.poiType.MASA_DE_AGUA) {
-				labelColor = POIManager.#poiLabelColor.MASA_DE_AGUA;
-				poiVisible = renderingOptions.masasDeAguaVisible;
-			}
-
-			POIManager.addPOIToViewer(poi.id, poi.name, poi.lat, poi.lon, renderingOptions.minVisibilityDistance, renderingOptions.maxVisibilityDistance, labelColor, poiVisible);
+			const labelColor = poiTypeConfig[poiType].color;
+			const poiVisible = poiTypeConfig[poiType].visible;
+			POIManager.addPOIToViewer(poi.id, poi.name, poi.lat, poi.lon, distanceDisplayCondition, labelColor, poiVisible);
 		}
 
 		POIManager.#poiDataSource.entities.resumeEvents();
 	}
 
-	static addPOIToViewer(poiId, poiName, poiLat, poiLon, minVisibilityDistance, maxVisibilityDistance, labelColor, visible) {
+	static addPOIToViewer(poiId, poiName, poiLat, poiLon, distanceDisplayCondition, labelColor, visible) {
 		try {
 			const entity = POIManager.#poiDataSource.entities.add({
 				id: poiId,
 				name: poiName,
 				description: POIManager.#getPOIDescription(poiLat, poiLon),
-				position: Cesium.Cartesian3.fromDegrees(poiLon, poiLat),
+				position: Cesium.Cartesian3.fromDegrees(poiLon, poiLat, 0.0),
 				show: visible,
 
 				label: {
 					disableDepthTestDistance: 0,
-					distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
-					scaleByDistance: new Cesium.NearFarScalar(100, 1.5, 20000, 0.4),
-					pixelOffset: new Cesium.Cartesian2(0, -15),
+					distanceDisplayCondition: distanceDisplayCondition,
+					scaleByDistance: POIManager.#labelScaleByDistance,
+					pixelOffset: POIManager.#labelPixelOffset,
 					verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
 					heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
 					text: poiName,
@@ -135,19 +140,9 @@ export class POIManager {
 					fillColor: Cesium.Color.BLACK,
 					showBackground: true,
 					backgroundColor: labelColor,
-					backgroundPadding: new Cesium.Cartesian2(3, 3),
-					scale: window.devicePixelRatio > 2 ? 1.2 : 1, // On high DPI displays, increase label size to improve readability
+					backgroundPadding: POIManager.#labelBackgroundPadding,
+					scale: POIManager.#labelScale,
 				},
-
-				//billboard: {
-				//	disableDepthTestDistance: 0,
-				//	distanceDisplayCondition: new Cesium.DistanceDisplayCondition(minVisibilityDistance, maxVisibilityDistance),
-				//	pixelOffset: new Cesium.Cartesian2(0, -1),
-				//	verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-				//	heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-				//	color: Cesium.Color.fromBytes(32, 32, 32, 190),
-				//	image: POIManager.#WHITE_LINE_2X15_PX,
-				//},
 
 			});
 		}

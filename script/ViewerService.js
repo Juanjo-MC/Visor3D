@@ -22,7 +22,7 @@ export class ViewerService {
 		return ViewerService.#viewer;
 	}
 
-	static async initialize(viewerContainer) {
+	static async initialize(viewerContainer, isMobileDevice) {
 		const viewer = new Cesium.Viewer(viewerContainer, {
 			imageryProvider: false, // This is necessary to prevent the viewer from downloading tiles from Bing
 			imageryProviderViewModels: ViewerService.#getImageryProviders(),
@@ -43,7 +43,7 @@ export class ViewerService {
 
 		// On mobile devices, cap camera movement to 0.75% of the window size per frame
 		// This prevents gestures, like fast swipes or drags, from moving the camera too far, providing a more controlled feel
-		if (navigator.userAgent.includes('Mobile')) {
+		if (isMobileDevice) {
 			viewer.scene.screenSpaceCameraController.maximumMovementRatio = 0.0075;
 		}
 
@@ -54,8 +54,54 @@ export class ViewerService {
 		viewer.scene.globe.depthTestAgainstTerrain = true;
 		viewer.scene.globe.maximumScreenSpaceError = 1.5;
 		viewer.scene.globe.loadingDescendantLimit = 50;
+		viewer.scene.globe.tileCacheSize = 500;
 		viewer.scene.postProcessStages.fxaa.enabled = false;
 		ViewerService.#viewer = viewer;
+
+		if ('connection' in navigator && navigator.connection.effectiveType === '4g') {
+			Cesium.RequestScheduler.maximumRequestsPerServer = 32;
+			Cesium.RequestScheduler.maximumRequests = 64;
+		}
+
+		// wmts-mapa-lidar.idee.es uses HTTP/1.1 and browsers strictly enforce a maximum of 6 concurrent connections per domain for HTTP/1.1
+		Cesium.RequestScheduler.requestsByServer['wmts-mapa-lidar.idee.es:443'] = 6;
+
+		// EXPERIMENTAL
+
+		//try {
+			// Point cloud
+			//const tileset = await Cesium.Cesium3DTileset.fromUrl("https://localhost:11443/3dtiles/tileset.json");			
+			//viewer.scene.primitives.add(tileset);
+
+			// 3D Tileset
+			//const dataSource = await Cesium.CzmlDataSource.load("https://betaserver.icgc.cat/cesium/data/Girona18_42.czml");
+			//viewer.dataSources.add(dataSource);
+
+			// MapBox Vector Tiles
+			// const west = Cesium.Math.toRadians(-4.8185);
+			// const south = Cesium.Math.toRadians(43.3005);
+			// const east = Cesium.Math.toRadians(-4.8155);
+			// const north = Cesium.Math.toRadians(43.3025);
+			// const rectangle = new Cesium.Rectangle(west, south, east, north);
+
+			// const mvt = await Cesium.MVTDataProvider.fromUrl('https://vt-btn.idee.es/1.0.0/btn/tile/{z}/{y}/{x}.pbf', {
+			// 	extent: rectangle,
+			// 	minZoom: 0,
+			// 	maxZoom: 14,
+			// });
+
+			// mvt.style = new Cesium.Cesium3DTileStyle({
+			// 	color: "color('red', 1.0)",
+			// 	strokeColor: "color('white', 1.0)",
+			// 	strokeWidth: 2
+			// });
+
+			//viewer.scene.primitives.add(mvt);
+
+		//} catch (error) {
+		//	console.error(`Error loading tileset: ${error}`);
+		//}
+
 	}
 
 	static #getImageryProviders() {
@@ -152,7 +198,7 @@ export class ViewerService {
 		ViewerService.#viewer.camera.flyTo({
 			destination: Cesium.Cartesian3.fromDegrees(lon, lat, cameraAltitude),
 			duration: duration,
-			easingFunction: Cesium.EasingFunction.SINUSOIDAL_OUT,
+			easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
 			complete: () => ViewerService.#viewer.scene.requestRender(),
 
 			orientation: {
@@ -173,107 +219,130 @@ export class ViewerService {
 		return position[0].height;
 	}
 
-	static async getSlopeDetails(lat, lon) {
+	// Variables to avoid unnecessary allocations in getCartographicScreenPosition, as this method is called very frequently during mouse movement
+	static #scratchRay = new Cesium.Ray();
+	static #scratchCartesian = new Cesium.Cartesian3();
+	static #scratchCartographic = new Cesium.Cartographic();
+
+	static getCartographicScreenPosition(windowPosition, result = { lat: null, lon: null }) {
+		const scene = ViewerService.#viewer.scene;
+		const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
+		if (!ray) { return; }
+		const cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
+		if (!cartesian) { return; }
+		const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian, scene.globe.ellipsoid, ViewerService.#scratchCartographic);
+		result.lat = Cesium.Math.toDegrees(cartographicPosition.latitude);
+		result.lon = Cesium.Math.toDegrees(cartographicPosition.longitude);
+		return result;
+	}
+
+	// Variables to avoid unnecessary allocations in getSlopeDetails, as this method is called very frequently during mouse movement
+	static #scratchPositions = [
+		new Cesium.Cartographic(),
+		new Cesium.Cartographic(),
+		new Cesium.Cartographic()
+	];
+
+	static #scratchP0 = new Cesium.Cartesian3();
+	static #scratchP1 = new Cesium.Cartesian3();
+	static #scratchP2 = new Cesium.Cartesian3();
+	static #scratchV0 = new Cesium.Cartesian3();
+	static #scratchV1 = new Cesium.Cartesian3();
+	static #scratchNormal = new Cesium.Cartesian3();
+	static #scratchUp = new Cesium.Cartesian3();
+	static #scratchNorthPole = new Cesium.Cartesian3(0.0, 0.0, 6378137.0);
+	static #scratchNorthDir = new Cesium.Cartesian3();
+	static #scratchProjNorth = new Cesium.Cartesian3();
+	static #scratchEastDir = new Cesium.Cartesian3();
+	static #scratchHorizontalNormal = new Cesium.Cartesian3();
+	static #scratchResult = { height: null, slope: null, aspect: null };
+
+	static async getSlopeDetails(lat, lon, signal = null) {
+		if (signal?.aborted) {
+			throw new DOMException('Aborted', 'AbortError');
+		}
+
 		const viewer = ViewerService.#viewer;
 		const terrainProvider = viewer.terrainProvider;
 		const offset = 0.00001;
+		const pTemp0 = Cesium.Cartographic.fromDegrees(lon, lat, 0, ViewerService.#scratchPositions[0]);
+		const pTemp1 = Cesium.Cartographic.fromDegrees(lon + offset, lat, 0, ViewerService.#scratchPositions[1]);
+		const pTemp2 = Cesium.Cartographic.fromDegrees(lon, lat + offset, 0, ViewerService.#scratchPositions[2]);
 
-		const positions = [
-			Cesium.Cartographic.fromDegrees(lon, lat),
-			Cesium.Cartographic.fromDegrees(lon + offset, lat),
-			Cesium.Cartographic.fromDegrees(lon, lat + offset)
-		];
+		await Cesium.sampleTerrainMostDetailed(terrainProvider, ViewerService.#scratchPositions);
 
-		await Cesium.sampleTerrainMostDetailed(terrainProvider, positions);
-		const p0 = Cesium.Cartographic.toCartesian(positions[0]);
-		const p1 = Cesium.Cartographic.toCartesian(positions[1]);
-		const p2 = Cesium.Cartographic.toCartesian(positions[2]);
-		const v0 = Cesium.Cartesian3.subtract(p1, p0, new Cesium.Cartesian3());
-		const v1 = Cesium.Cartesian3.subtract(p2, p0, new Cesium.Cartesian3());
-		const surfaceNormal = Cesium.Cartesian3.cross(v0, v1, new Cesium.Cartesian3());
+		if (signal?.aborted) {
+			throw new DOMException('Aborted', 'AbortError');
+		}
+
+		const p0 = Cesium.Cartographic.toCartesian(pTemp0, viewer.scene.globe.ellipsoid, ViewerService.#scratchP0);
+		const p1 = Cesium.Cartographic.toCartesian(pTemp1, viewer.scene.globe.ellipsoid, ViewerService.#scratchP1);
+		const p2 = Cesium.Cartographic.toCartesian(pTemp2, viewer.scene.globe.ellipsoid, ViewerService.#scratchP2);
+		const v0 = Cesium.Cartesian3.subtract(p1, p0, ViewerService.#scratchV0);
+		const v1 = Cesium.Cartesian3.subtract(p2, p0, ViewerService.#scratchV1);
+		const surfaceNormal = Cesium.Cartesian3.cross(v0, v1, ViewerService.#scratchNormal);
+
 		Cesium.Cartesian3.normalize(surfaceNormal, surfaceNormal);
-		const upVector = viewer.scene.globe.ellipsoid.geodeticSurfaceNormal(p0);
+
+		const upVector = viewer.scene.globe.ellipsoid.geodeticSurfaceNormal(p0, ViewerService.#scratchUp);
 		const slope = Cesium.Math.toDegrees(Cesium.Cartesian3.angleBetween(surfaceNormal, upVector));
 
-		return {
-			height: positions[0].height,
-			slope: slope,
-			aspect: ViewerService.#calculateAspect(surfaceNormal, upVector, p0)
-		};
+		ViewerService.#scratchResult.height = pTemp0.height;
+		ViewerService.#scratchResult.slope = slope;
+		ViewerService.#scratchResult.aspect = ViewerService.#calculateAspect(surfaceNormal, upVector, p0);
+		return ViewerService.#scratchResult;
 	}
 
 	static #calculateAspect(surfaceNormal, upVector, p0) {
-		const northPole = new Cesium.Cartesian3(0.0, 0.0, 6378137.0);
-		const northDir = Cesium.Cartesian3.subtract(northPole, p0, new Cesium.Cartesian3());
+		const northDir = Cesium.Cartesian3.subtract(ViewerService.#scratchNorthPole, p0, ViewerService.#scratchNorthDir);
 		const dot = Cesium.Cartesian3.dot(northDir, upVector);
 
 		const projNorth = Cesium.Cartesian3.add(
 			northDir,
-			Cesium.Cartesian3.multiplyByScalar(upVector, -dot, new Cesium.Cartesian3()),
-			new Cesium.Cartesian3()
+			Cesium.Cartesian3.multiplyByScalar(upVector, -dot, ViewerService.#scratchProjNorth),
+			ViewerService.#scratchProjNorth
 		);
 
 		Cesium.Cartesian3.normalize(projNorth, projNorth);
-		const eastDir = Cesium.Cartesian3.cross(upVector, projNorth, new Cesium.Cartesian3());
+
+		const eastDir = Cesium.Cartesian3.cross(upVector, projNorth, ViewerService.#scratchEastDir);
 		const normalDotUp = Cesium.Cartesian3.dot(surfaceNormal, upVector);
 
 		const horizontalNormal = Cesium.Cartesian3.add(
 			surfaceNormal,
-			Cesium.Cartesian3.multiplyByScalar(upVector, -normalDotUp, new Cesium.Cartesian3()),
-			new Cesium.Cartesian3()
+			Cesium.Cartesian3.multiplyByScalar(upVector, -normalDotUp, ViewerService.#scratchHorizontalNormal),
+			ViewerService.#scratchHorizontalNormal
 		);
 
 		Cesium.Cartesian3.normalize(horizontalNormal, horizontalNormal);
+
 		const x = Cesium.Cartesian3.dot(horizontalNormal, projNorth);
 		const y = Cesium.Cartesian3.dot(horizontalNormal, eastDir);
 		const aspectDegrees = Cesium.Math.toDegrees(Math.atan2(-y, x));
+
 		return (aspectDegrees + 360.0) % 360.0;
 	}
 
-	static getCameraPosition() { // {lat, lon, altitude, heading, pitch}
+	static getCameraPosition(result = { lat: null, lon: null, altitude: null, heading: null, pitch: null }) {
 		const camera = ViewerService.#viewer.camera;
 
-		const cameraPosition = {
-			lat: Cesium.Math.toDegrees(camera.positionCartographic.latitude),
-			lon: Cesium.Math.toDegrees(camera.positionCartographic.longitude),
-			altitude: camera.positionCartographic.height,
-			heading: Cesium.Math.toDegrees(camera.heading),
-			pitch: Cesium.Math.toDegrees(camera.pitch),
-		};
-
-		return cameraPosition;
+		result.lat = Cesium.Math.toDegrees(camera.positionCartographic.latitude);
+		result.lon = Cesium.Math.toDegrees(camera.positionCartographic.longitude);
+		result.altitude = camera.positionCartographic.height;
+		result.heading = Cesium.Math.toDegrees(camera.heading);
+		result.pitch = Cesium.Math.toDegrees(camera.pitch);
+		return result;
 	}
 
 	static setCameraHeading(heading) {
-		const currentCameraPosition = ViewerService.#viewer.camera.positionWC;
 		const currentCameraPitch = ViewerService.#viewer.camera.pitch;
 
 		ViewerService.#viewer.camera.setView({
-			destination: currentCameraPosition,
 			orientation: {
 				heading: Cesium.Math.toRadians(heading),
 				pitch: currentCameraPitch,
-				roll: 0,
 			}
 		});
-	}
-
-	static getCartographicScreenPosition(windowPosition) { // {lat, lon}
-		const scene = ViewerService.#viewer.scene;
-		const globe = scene.globe;
-		const ray = scene.camera.getPickRay(windowPosition);
-
-		if (ray) {
-			const cartesian = globe.pick(ray, scene);
-
-			if (cartesian) {
-				const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian);
-				return {
-					lat: Cesium.Math.toDegrees(cartographicPosition.latitude),
-					lon: Cesium.Math.toDegrees(cartographicPosition.longitude)
-				};
-			}
-		}
 	}
 
 	static refreshScene() {
@@ -313,15 +382,12 @@ export class ViewerService {
 			}
 
 			camera.setView({
-				destination: camera.positionWC,
 				orientation: {
 					heading: newHeading,
 					pitch: newPitch,
-					roll: camera.roll,
 				},
 			});
 
-			ViewerService.#viewer.scene.requestRender();
 			requestAnimationFrame(step);
 		};
 
@@ -352,8 +418,12 @@ export class ViewerService {
 		ViewerService.#viewer.scene.globe.material = Shaders.slope(alpha);
 	}
 
-	static showLineArt(sensitivity = 0.2, alpha = 0.5) {
-		ViewerService.#viewer.scene.globe.material = Shaders.lineArt(sensitivity, alpha);
+	static showLineArt(sensitivity = 0.2) {
+		ViewerService.#viewer.scene.globe.material = Shaders.lineArt(sensitivity);
+	}
+
+	static showHipsometricTint(minHeight = 0, maxHeight = 5000, alpha = 0.5) {
+		ViewerService.#viewer.scene.globe.material = Shaders.hipsometricTint(minHeight, maxHeight, alpha);
 	}
 
 	// Event handlers
@@ -375,6 +445,10 @@ export class ViewerService {
 
 	static onCanvasClick(callbackFunction) {
 		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_CLICK);
+	}
+
+	static onCanvasDoubleClick(callbackFunction) {
+		ViewerService.#getCanvasEventHandler().setInputAction((click) => callbackFunction(click), Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
 	}
 
 	static onCanvasMouseDown(callbackFunction) {

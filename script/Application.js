@@ -41,10 +41,10 @@ export class Application {
 		ERROR: 'error',
 	});
 
-	static #latestLoadedPOIsCameraPosition = {};	// Latest position where POIs were loaded {lat, lon}
-	static #cameraHeading = null;					// Current camera heading
-	static #geocoderMarkerId = null;				// Entity Id of geocoder pin
-	static #geolocationMarkerId = null;				// Entity Id of geolocation position pin
+	static #currentCameraPosition = {};					// Current camera position {lat, lon, altitude, heading, pitch}
+	static #latestLoadedPOIsCameraCoordinates = {};		// Latest coordinates where POIs were loaded {lat, lon}
+	static #geocoderMarkerId = null;					// Entity Id of geocoder pin
+	static #geolocationMarkerId = null;					// Entity Id of geolocation position pin
 
 	// DOM elements
 	static #domElement = Object.freeze({
@@ -54,7 +54,6 @@ export class Application {
 		toggleCumbres: document.getElementById('toggleCumbres'),
 		togglePoblaciones: document.getElementById('togglePoblaciones'),
 		toggleMasasDeAgua: document.getElementById('toggleMasasDeAgua'),
-		spinner: document.getElementById('spinner'),
 		minVisibilityDistanceControl: document.getElementById('distanceFrom'),
 		minVisibilityDistanceLabel: document.getElementById('distanceFromValue'),
 		maxVisibilityDistanceControl: document.getElementById('distanceTo'),
@@ -78,12 +77,16 @@ export class Application {
 		valHeight: document.getElementById('valHeight'),
 		valSlope: document.getElementById('valSlope'),
 		valAspect: document.getElementById('valAspect'),
+		valCameraHeight: document.getElementById('valCameraHeight'),
+		iconCameraPitch: document.getElementById('iconCameraPitch'),
+		valCameraPitch: document.getElementById('valCameraPitch'),
+		valDistance: document.getElementById('valDistance'),
 	});
-
+	
 	static async initialize() {
 		try {
 			POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
-			await ViewerService.initialize(Application.#domElement.viewerContainer.id);
+			await ViewerService.initialize(Application.#domElement.viewerContainer.id, Device.isMobile());
 			await POIManager.initialize(ViewerService.viewer);
 			await MarkersManager.initialize(ViewerService.viewer);
 			Application.#prepareUI();
@@ -142,31 +145,31 @@ export class Application {
 
 	static #prepareScene() {
 		// Restore last used cartography
-		let lastUsedCartography = Application.getLastUsedCartography();
+		const lastUsedCartography = Application.#getLastUsedCartography();
 
 		if (lastUsedCartography) {
 			ViewerService.setImagery(lastUsedCartography);
 		}
 
 		// Set initial camera position based on the following priority: query string parameters, saved position in local storage, default fallback position
-		const cameraInitialPosition = Application.#getCameraInitialPosition();				
-				
+		const cameraInitialPosition = Application.#getCameraInitialPosition();
+
 		if (Application.#markerNeeded()) {
-			const name = decodeURIComponent(Utils.getQueryStringValue('name')).trim();
-			
-			if (name === 'null' || name.length === 0) { // If there is no 'name' parameter in the query string, show a marker
+			const name = decodeURIComponent(new URL(document.URL).searchParams.get('name')).trim();
+
+			if (name === 'null' || name.length === 0) { // If there is no name parameter in the query string, show a marker
 				let description = `<a href="geo:${cameraInitialPosition.lat.toFixed(6)},${cameraInitialPosition.lon.toFixed(6)}"><strong>Latitud</strong>: ${cameraInitialPosition.lat.toFixed(6)}</a><br><br>`;
 				description += `<a href="geo:${cameraInitialPosition.lat.toFixed(6)},${cameraInitialPosition.lon.toFixed(6)}"><strong>Longitud</strong>: ${cameraInitialPosition.lon.toFixed(6)}</a>`;
 				MarkersManager.createMarker(cameraInitialPosition.lat, cameraInitialPosition.lon, null, description, Application.#markerPins.QUERY_STRING_POSITION);
 			}
-			else  { // Else add a POI that will show a label
-				POIManager.addPOIToViewer(null, name, cameraInitialPosition.lat, cameraInitialPosition.lon, 10, 50000, Cesium.Color.fromBytes(226, 255, 226, 190), true);
+			else { // Else add a POI that will show a label				
+				POIManager.addPOIToViewer(null, name, cameraInitialPosition.lat, cameraInitialPosition.lon, new Cesium.DistanceDisplayCondition(10, 50000), Cesium.Color.fromBytes(226, 255, 226, 190), true);
 			}
 		}
 
-		Application.#latestLoadedPOIsCameraPosition.lat = cameraInitialPosition.lat;
-		Application.#latestLoadedPOIsCameraPosition.lon = cameraInitialPosition.lon;
-		
+		Application.#latestLoadedPOIsCameraCoordinates.lat = cameraInitialPosition.lat;
+		Application.#latestLoadedPOIsCameraCoordinates.lon = cameraInitialPosition.lon;
+
 		// Load POIs around the initial camera position
 		const pois = POIFinder.findPOIsAround(cameraInitialPosition.lat, cameraInitialPosition.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
 
@@ -182,7 +185,7 @@ export class Application {
 		ViewerService.flyToPosition(cameraInitialPosition.lat, cameraInitialPosition.lon, cameraInitialPosition.altitude, cameraInitialPosition.heading, cameraInitialPosition.pitch);
 	}
 
-	static getLastUsedCartography() {
+	static #getLastUsedCartography() {
 		let lastCartography;
 
 		try {
@@ -242,17 +245,17 @@ export class Application {
 		return { lat, lon, altitude, heading, pitch };
 	}
 
-	static #markerNeeded(){
+	static #markerNeeded() {
 		const searchParams = new URLSearchParams(window.location.search);
 		const latParam = searchParams.get('lat');
 		const lonParam = searchParams.get('lon');
-		
+
 		if (!latParam || !lonParam) {
 			return false;
 		}
-		
+
 		const lat = parseFloat(decodeURIComponent(latParam).replace(/ /g, ''));
-		const lon = parseFloat(decodeURIComponent(lonParam).replace(/ /g, ''));		
+		const lon = parseFloat(decodeURIComponent(lonParam).replace(/ /g, ''));
 		return Utils.isValidLatitude(lat) && Utils.isValidLongitude(lon);
 	}
 
@@ -286,29 +289,46 @@ export class Application {
 	}
 
 	// Event listeners
-	static #onCameraChange() { // Update compass
-		const cameraHeading = ViewerService.getCameraPosition().heading.toFixed(2);
+
+	static #onDocumentVisibilityChange() { // Save view state
+		if (document.hidden) {
+			try {
+				window.localStorage.setItem('lastCameraPosition', JSON.stringify(Application.#currentCameraPosition));
+				window.localStorage.setItem('lastCartography', ViewerService.currentImageryName);
+			}
+			catch (err) {
+				console.error(err);
+			}
+		}
+	}	
+
+	static #onCameraChange() { // Update compass and camera display
+		const previousCameraHeading =  Application.#currentCameraPosition.heading;
+		ViewerService.getCameraPosition(Application.#currentCameraPosition);
+
+		if (!Device.isMobile() && Device.hasMouse()) { // Do not update camera display on mobile devices, as it is not visible			
+			Application.#domElement.valCameraHeight.innerHTML = Application.#currentCameraPosition.altitude.toFixed(0) + ' m';
+			Application.#domElement.iconCameraPitch.style.transform = `rotate(${-Application.#currentCameraPosition.pitch}deg)`;
+			Application.#domElement.valCameraPitch.innerHTML = Application.#currentCameraPosition.pitch.toFixed(1) + '°';
+		}
 
 		// Only rotation movements do change the camera heading. Other movements like, for example, translation, don't
 		// This check avoid unnecessary compass updates
-		if (cameraHeading !== Application.#cameraHeading) {
-			Application.#cameraHeading = cameraHeading;
-			const compassHeading = CompassService.getHeading(Math.round(cameraHeading));
-			Application.#domElement.compass.style.transform = `translate(-50%, -50%) rotate(${compassHeading * -1}deg)`;
+		if (Math.abs(Application.#currentCameraPosition.heading - previousCameraHeading) >= 0.005) {
+			const compassHeading = CompassService.getHeading(Application.#currentCameraPosition.heading);
+			Application.#domElement.compass.style.transform = `translate(-50%,-50%) rotate(${-compassHeading}deg)`;
 		}
 	}
 
 	static #onCameraStopMove() { // Load POIs
-		const cameraPosition = ViewerService.getCameraPosition();
-		const lat = cameraPosition.lat;
-		const lon = cameraPosition.lon;
-		const oldCameraPosition = { lat: Application.#latestLoadedPOIsCameraPosition.lat, lon: Application.#latestLoadedPOIsCameraPosition.lon };
-		Application.#latestLoadedPOIsCameraPosition.lat = lat;
-		Application.#latestLoadedPOIsCameraPosition.lon = lon;
+		ViewerService.getCameraPosition(Application.#currentCameraPosition);
+		const oldCameraCoordinates = { lat: Application.#latestLoadedPOIsCameraCoordinates.lat, lon: Application.#latestLoadedPOIsCameraCoordinates.lon };
+		Application.#latestLoadedPOIsCameraCoordinates.lat = Application.#currentCameraPosition.lat;;
+		Application.#latestLoadedPOIsCameraCoordinates.lon = Application.#currentCameraPosition.lon;
 
-		if (oldCameraPosition.lat.toFixed(6) !== Application.#latestLoadedPOIsCameraPosition.lat.toFixed(6) || oldCameraPosition.lon.toFixed(6) !== Application.#latestLoadedPOIsCameraPosition.lon.toFixed(6)) {
-			const poisInOldBbox = POIFinder.findPOIsAround(oldCameraPosition.lat, oldCameraPosition.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
-			const poisInNewBbox = POIFinder.findPOIsAround(Application.#latestLoadedPOIsCameraPosition.lat, Application.#latestLoadedPOIsCameraPosition.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
+		if (oldCameraCoordinates.lat.toFixed(6) !== Application.#currentCameraPosition.lat.toFixed(6) || oldCameraCoordinates.lon.toFixed(6) !== Application.#currentCameraPosition.lon.toFixed(6)) {
+			const poisInOldBbox = POIFinder.findPOIsAround(oldCameraCoordinates.lat, oldCameraCoordinates.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
+			const poisInNewBbox = POIFinder.findPOIsAround(Application.#currentCameraPosition.lat, Application.#currentCameraPosition.lon, Application.#DEFAULT_POIS_LOAD_RADIUS);
 			const poisToRemove = Utils.arrayDifference(poisInOldBbox, poisInNewBbox);
 			const poisToAdd = Utils.arrayDifference(poisInNewBbox, poisInOldBbox);
 			const visibilityRange = Application.#getPOIsVisibilityRange();
@@ -323,7 +343,7 @@ export class Application {
 
 			POIManager.removePOIsFromViewer(poisToRemove);
 			POIManager.addPOIsToViewer(poisToAdd, renderingOptions);
-			ViewerService.refreshScene();
+			requestAnimationFrame(() => ViewerService.refreshScene());
 		}
 	}
 
@@ -331,7 +351,7 @@ export class Application {
 		// On touch devices, users may tap slightly above terrain features, over the sky area
 		// To handle this, we search for coordinates up to 'yPixelsTolerance' pixels below the touch position
 		const yPixelsTolerance = 20;
-		const delay = 5000; // Show the POI for this time (ms)
+		const delay = 5000; // Show the POI for this duration (ms)
 		let y = click.position.y;
 		let clickCartographicPosition;
 
@@ -392,57 +412,56 @@ export class Application {
 	static #onCanvasMouseDown(click) { // Rotate view
 		const delay = 500;				// Time (ms) to wait before starting rotation, if conditions remain valid
 		const movementThreshold = 5		// Maximum distance the pointer can move during the delay before the interaction is no longer considered a long press or static click (px)
-		const margin = 50;				// Maximum distance from any screen edge where the click is considered for rotation
-		const bottomMargin = 70;		// Higher bottom margin to account for UI widgets occupying space at the bottom of the screen
+		const leftRightMargin = 50;
+		const topBottomMargin = 70;
 		const x = click.position.x;
 		const y = click.position.y;
 		let mouseStillDown = true;
 		let positionUnchanged = true;
 
-		if (x > margin && x < window.innerWidth - margin && y > margin && y < window.innerHeight - bottomMargin) {
-			return;
-		}
+		if (x < leftRightMargin || x > window.innerWidth - leftRightMargin || y < topBottomMargin || y > window.innerHeight - topBottomMargin) {
 
-		const onPointerUp = () => { // Cancel rotation if the pointer is released before the delay expires
-			mouseStillDown = false;
-			removeEventListeners();
-		};
-
-		const onPointerMove = (e) => { // Cancel rotation if the pointer moves more than 'movementThreshold' pixels from the initial click position before the delay expires
-			if (Math.abs(e.clientX - x) > movementThreshold || Math.abs(e.clientY - y) > movementThreshold) {
-				positionUnchanged = false;
+			const onPointerUp = () => { // Cancel rotation if the pointer is released before the delay expires
+				mouseStillDown = false;
 				removeEventListeners();
-			}
-		};
+			};
 
-		const removeEventListeners = () => {
-			document.removeEventListener("pointerup", onPointerUp, { capture: true });
-			document.removeEventListener("pointermove", onPointerMove, { capture: true });
-		};
-
-		document.addEventListener("pointerup", onPointerUp, { capture: true });
-		document.addEventListener("pointermove", onPointerMove, { capture: true });
-
-		setTimeout(() => {
-			removeEventListeners();
-
-			if (mouseStillDown && positionUnchanged) {
-				ViewerService.toggleCameraGestures(false);
-
-				if (x <= margin) {
-					ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
+			const onPointerMove = (e) => { // Cancel rotation if the pointer moves more than 'movementThreshold' pixels from the initial click position before the delay expires
+				if (Math.abs(e.clientX - x) > movementThreshold || Math.abs(e.clientY - y) > movementThreshold) {
+					positionUnchanged = false;
+					removeEventListeners();
 				}
-				else if (x >= window.innerWidth - margin) {
-					ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
+			};
+
+			const removeEventListeners = () => {
+				document.removeEventListener("pointerup", onPointerUp, { capture: true });
+				document.removeEventListener("pointermove", onPointerMove, { capture: true });
+			};
+
+			document.addEventListener("pointerup", onPointerUp, { capture: true });
+			document.addEventListener("pointermove", onPointerMove, { capture: true });
+
+			setTimeout(() => {
+				removeEventListeners();
+
+				if (mouseStillDown && positionUnchanged) {
+					ViewerService.toggleCameraGestures(false);
+
+					if (x <= leftRightMargin) {
+						ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.NEGATIVE);
+					}
+					else if (x >= window.innerWidth - leftRightMargin) {
+						ViewerService.startRotation(ViewerService.rotationAxis.HEADING, ViewerService.rotationDirection.POSITIVE);
+					}
+					else if (y <= topBottomMargin) {
+						ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
+					}
+					else if (y >= window.innerHeight - topBottomMargin) {
+						ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
+					}
 				}
-				else if (y <= margin) {
-					ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.POSITIVE);
-				}
-				else if (y >= window.innerHeight - bottomMargin) {
-					ViewerService.startRotation(ViewerService.rotationAxis.PITCH, ViewerService.rotationDirection.NEGATIVE);
-				}
-			}
-		}, delay);
+			}, delay);
+		}
 	}
 
 	static #onCanvasMouseUp(click) { // Stop rotating view
@@ -450,111 +469,135 @@ export class Application {
 		ViewerService.toggleCameraGestures(true);
 	}
 
-	static async #onMouseMove(movement) { // Update coordinates, altitude, slope and aspect of the point under the mouse cursor
-		const position = ViewerService.getCartographicScreenPosition(movement.endPosition);
-		let lat = '----';
-		let lon = '----';
-		let altitude = '----';
-		let slope = '----';
-		let aspect = '----';
+	// Variables to avoid unnecessary allocations and calls to getSlopeDetails when the mouse is moved fast over the screen
+	static #slopeAbortController = null;
+	static #mousePositionScratch = { lat: null, lon: null };
+	static #SLOPE_UPDATE_INTERVAL = 50; // ms
+	static #lastExecutionTime = 0;
+	static #onMouseMoveThrottleTimeoutId = null;
 
-		if (position) {
-			lat = position.lat.toFixed(6);
-			lon = position.lon.toFixed(6);
-			const slopeDetails = await ViewerService.getSlopeDetails(position.lat, position.lon);
+	static #onMouseMove(movement) { // Update coordinates and slope details
+		ViewerService.getCartographicScreenPosition(movement.endPosition, Application.#mousePositionScratch);
 
-			if (slopeDetails) {
-				altitude = slopeDetails.height.toFixed(0) + ' m';
-				slope = slopeDetails.slope.toFixed(0) + '°';
+		if (!Application.#mousePositionScratch.lat) {
+			if (Application.#slopeAbortController) {
+				Application.#slopeAbortController.abort();
+			}
 
-				if (slopeDetails.slope > 1) { // Aspect is only relevant if there is a slope
-					aspect = Utils.degreesToCardinalDirection(slopeDetails.aspect);
-				}
+			clearTimeout(Application.#onMouseMoveThrottleTimeoutId);
+			Application.#clearCoordinatesAndTerrainDOM();
+		}
+		else {
+			Application.#domElement.valLat.innerHTML = Application.#mousePositionScratch.lat.toFixed(6);
+			Application.#domElement.valLon.innerHTML = Application.#mousePositionScratch.lon.toFixed(6);
+
+			const now = performance.now();
+			const timeSinceLastCall = now - Application.#lastExecutionTime;
+
+			clearTimeout(Application.#onMouseMoveThrottleTimeoutId);
+
+			if (timeSinceLastCall >= Application.#SLOPE_UPDATE_INTERVAL) {
+				Application.#fetchTerrainData(Application.#mousePositionScratch.lat, Application.#mousePositionScratch.lon);
+			}
+			else {
+				const remainingTime = Application.#SLOPE_UPDATE_INTERVAL - timeSinceLastCall;
+				const latTarget = Application.#mousePositionScratch.lat;
+				const lonTarget = Application.#mousePositionScratch.lon;
+				
+				Application.#mousePositionScratch.lat = null;
+				Application.#mousePositionScratch.lon = null;
+				Application.#onMouseMoveThrottleTimeoutId = setTimeout(() => { Application.#fetchTerrainData(latTarget, lonTarget); }, remainingTime);
 			}
 		}
+	}
 
-		Application.#domElement.valLat.innerHTML = lat;
-		Application.#domElement.valLon.innerHTML = lon;
-		Application.#domElement.valHeight.innerHTML = altitude;
-		Application.#domElement.valSlope.innerHTML = slope;
-		Application.#domElement.valAspect.innerHTML = aspect;
+	static async #fetchTerrainData(lat, lon) {
+		Application.#lastExecutionTime = performance.now();
+
+		if (Application.#slopeAbortController) {
+			Application.#slopeAbortController.abort();
+		}
+
+		Application.#slopeAbortController = new AbortController();
+		const { signal } = Application.#slopeAbortController;
+
+		try {
+			const slopeDetails = await ViewerService.getSlopeDetails(lat, lon, signal);
+
+			if (slopeDetails) {
+				ViewerService.getCameraPosition(Application.#currentCameraPosition);
+
+				const distanceToCamera = Utils.distanceBetweenPoints(lat, lon, slopeDetails.height, Application.#currentCameraPosition.lat, Application.#currentCameraPosition.lon, Application.#currentCameraPosition.altitude);
+
+				Application.#domElement.valHeight.innerHTML = Math.round(slopeDetails.height) + ' m';
+				Application.#domElement.valSlope.innerHTML = Math.round(slopeDetails.slope) + '°';
+				Application.#domElement.valAspect.innerHTML = slopeDetails.slope > 1 ? Utils.degreesToCardinalDirection(slopeDetails.aspect) : '----';
+				Application.#domElement.valCameraHeight.innerHTML = (Application.#currentCameraPosition.altitude).toFixed(0) + ' m';
+				Application.#domElement.iconCameraPitch.style.transform = `rotate(${-Application.#currentCameraPosition.pitch}deg)`;
+				Application.#domElement.valCameraPitch.innerHTML = Application.#currentCameraPosition.pitch.toFixed(1) + '°';
+				Application.#domElement.valDistance.innerHTML = distanceToCamera.toFixed(0) + ' m';
+			}
+		}
+		catch (err) {
+			if (err.name !== 'AbortError') {
+				console.error(err);
+				Application.#clearTerrainDOM();
+			}
+		}
+	}
+
+	static #clearCoordinatesAndTerrainDOM() {
+		Application.#domElement.valLat.innerHTML = '----';
+		Application.#domElement.valLon.innerHTML = '----';
+		Application.#clearTerrainDOM();
+	}
+
+	static #clearTerrainDOM() {
+		Application.#domElement.valHeight.innerHTML = '----';
+		Application.#domElement.valSlope.innerHTML = '----';
+		Application.#domElement.valAspect.innerHTML = '----';
+		Application.#domElement.valDistance.innerHTML = '----';
 	}
 
 	static #onSelectedImageryChange(imagery) { // Show toast
 		Application.#showToast(`Mostrando ${imagery.name}`);
 	}
 
-	static #onDocumentVisibilityChange() { // Save view state
-		if (document.hidden) {
-			try {
-				window.localStorage.setItem('lastCameraPosition', JSON.stringify(ViewerService.getCameraPosition()));
-				window.localStorage.setItem('lastCartography', ViewerService.currentImageryName);
-			}
-			catch (err) {
-				console.error(err);
-			}
-		}
-	}
+	static #onCompassDoubleClick(event) { // Rotate view
+		ViewerService.getCameraPosition(Application.#currentCameraPosition);
 
-	static #onCompassDoubleClick() { // Rotate view
 		const compassRect = event.currentTarget.getBoundingClientRect();
 		const x = event.clientX - compassRect.left;
 		const isRightHalf = x > compassRect.width / 2;
-		const currentCameraPosition = ViewerService.getCameraPosition();
 		let currentHeading;
-		let newHeading;
+		let newHeading;	
 
 		if (isRightHalf) {
-			currentHeading = Math.ceil(currentCameraPosition.heading);
+			currentHeading = Math.ceil(Application.#currentCameraPosition.heading);
 			newHeading = (currentHeading - (currentHeading % 90) + 90) % 360;
 		}
 		else {
-			currentHeading = Math.floor(currentCameraPosition.heading);
+			currentHeading = Math.floor(Application.#currentCameraPosition.heading);
 			const offset = (currentHeading % 90) === 0 ? 0 : 90 - (currentHeading % 90); // Offset to next cardinal clockwise
 			newHeading = (currentHeading + offset - 90 + 360) % 360;
 		}
-
-		let headingText;
-
-		switch (newHeading) {
-			case 0:
-				headingText = 'Norte';
-				break;
-			case 90:
-				headingText = 'Este';
-				break;
-			case 180:
-				headingText = 'Sur';
-				break;
-			case 270:
-				headingText = 'Oeste';
-				break;
-		}
-
-		ViewerService.flyToPosition(currentCameraPosition.lat, currentCameraPosition.lon, currentCameraPosition.altitude, newHeading, currentCameraPosition.pitch);
-		Application.#showToast(`Orientando el visor hacia el ${headingText}`);
+		
+		const cardinalDirections = ['Norte', 'Este', 'Sur', 'Oeste'];
+		const headingText = cardinalDirections[newHeading / 90];
+		const headingDelta = Math.abs(((newHeading - currentHeading + 540) % 360) - 180);
+		
+		ViewerService.flyToPosition(Application.#currentCameraPosition.lat, Application.#currentCameraPosition.lon, Application.#currentCameraPosition.altitude, newHeading, Application.#currentCameraPosition.pitch, 5 * headingDelta / 90);
+		Application.#showToast(`Orientando el visor hacia el ${headingText}`, Application.#toastType.INFO, 5000 * headingDelta / 90);
 	}
 
 	// POIs
-	static async #onPOIsVisibilityToggleChange(domElement, poiType) {
+	static #onPOIsVisibilityToggleChange(domElement, poiType) {
 		domElement.addEventListener("change", async e => Application.#setPOIsVisibility(poiType, e.target.checked));
 	}
 
-	static async #setPOIsVisibility(poiType, visible) {
-		//await Application.#showSpinner();
+	static #setPOIsVisibility(poiType, visible) {
 		POIManager.setPOIsVisibility(poiType, visible);
-		//await Application.#hideSpinner();
 		ViewerService.refreshScene();
-	}
-
-	static async #showSpinner() {
-		await new Promise(resolve => setTimeout(resolve, 20));
-		Application.#domElement.spinner.style.display = 'block';
-	}
-
-	static async #hideSpinner() {
-		await new Promise(resolve => setTimeout(resolve, 20));
-		Application.#domElement.spinner.style.display = 'none';
 	}
 
 	static #onMinVisibilityDistanceInput() {
@@ -583,7 +626,7 @@ export class Application {
 
 	// External data
 	static async #onFileInputChange() {
-		const file = this.files[0];
+		const file = Application.#domElement.fileInput.files[0];
 
 		if (file) {
 			try {
@@ -619,7 +662,7 @@ export class Application {
 				Application.#showToast(`Se ha producido un error al procesar el fichero ${file.name}: ${err.message}`, Application.#toastType.ERROR);
 			}
 			finally {
-				this.value = null;
+				Application.#domElement.fileInput.value = null;
 			}
 		}
 	}
@@ -683,7 +726,7 @@ export class Application {
 				else {
 					for (const result of searchResults) {
 						const option = new Option(result.address, result.id);
-						option.setAttribute('type', result.type);
+						option.setAttribute('data-type', result.type);
 						searchResultsList.add(option);
 					}
 
@@ -702,7 +745,7 @@ export class Application {
 			MarkersManager.removeMarker(Application.#geocoderMarkerId);
 			Application.#geocoderMarkerId = null;
 			const resultId = Application.#domElement.searchResultsList.value;
-			const resultType = Application.#domElement.searchResultsList.selectedOptions[0].attributes.type.nodeValue;
+			const resultType = Application.#domElement.searchResultsList.selectedOptions[0].dataset.type;
 			const geocoderResult = await GeocodingService.find(resultId, resultType);
 			const resultAltitude = await ViewerService.getElevation(geocoderResult.lat, geocoderResult.lng);
 			const description = GeocodingService.getHtml(geocoderResult, resultAltitude);
@@ -731,21 +774,21 @@ export class Application {
 
 	// Slope
 	static #onBtnSlopeClick() {
-		const slopeLayerActive = Application.#domElement.btnSlope.getAttribute('active');
+		const slopeLayerActive = Application.#domElement.btnSlope.dataset.active;
 
 		if (slopeLayerActive === 'false') {
 			ViewerService.clearGlobeMaterial();
-			Application.#disableButtons(Application.#domElement.btnSlope);
+			Application.#disableLayersButtons(Application.#domElement.btnSlope);
 			ViewerService.showSlope();
 			ViewerService.refreshScene();
-			Application.#domElement.btnSlope.setAttribute('active', 'true');
+			Application.#domElement.btnSlope.dataset.active = 'true';
 			Application.#domElement.btnSlope.style.color = 'rgb(255, 165, 0)';
 			Application.#showToast('Capa de pendientes activada');
 		}
 		else {
 			ViewerService.clearGlobeMaterial();
 			ViewerService.refreshScene();
-			Application.#domElement.btnSlope.setAttribute('active', 'false');
+			Application.#domElement.btnSlope.dataset.active = 'false';
 			Application.#domElement.btnSlope.style.color = 'rgb(237, 255, 255)';
 			Application.#showToast('Capa de pendientes desactivada');
 		}
@@ -753,33 +796,33 @@ export class Application {
 
 	// Line art
 	static #onBtnLineArtClick() {
-		const lineArtLayerActive = Application.#domElement.btnLineArt.getAttribute('active');
+		const lineArtLayerActive = Application.#domElement.btnLineArt.dataset.active;
 
 		if (lineArtLayerActive === 'false') {
 			ViewerService.clearGlobeMaterial();
-			Application.#disableButtons(Application.#domElement.btnLineArt);
+			Application.#disableLayersButtons(Application.#domElement.btnLineArt);
 			const sensitivity = Device.isMobile() ? 0.2 : 0.3;
 			ViewerService.showLineArt(sensitivity);
 			ViewerService.refreshScene();
-			Application.#domElement.btnLineArt.setAttribute('active', 'true');
+			Application.#domElement.btnLineArt.dataset.active = 'true';
 			Application.#domElement.btnLineArt.style.color = 'rgb(255, 165, 0)';
 			Application.#showToast('Capa \'boceto\' activada');
 		}
 		else {
 			ViewerService.clearGlobeMaterial();
 			ViewerService.refreshScene();
-			Application.#domElement.btnLineArt.setAttribute('active', 'false');
+			Application.#domElement.btnLineArt.dataset.active = 'false';
 			Application.#domElement.btnLineArt.style.color = 'rgb(237, 255, 255)';
 			Application.#showToast('Capa \'boceto\' desactivada');
 		}
 	}
 
-	static #disableButtons(currentButton) {
-		const buttons = [Application.#domElement.btnSlope, Application.#domElement.btnLineArt];
+	static #disableLayersButtons(activeLayerButton) {
+		const layersButtons = [Application.#domElement.btnSlope, Application.#domElement.btnLineArt];
 
-		for (const button of buttons) {
-			if (button !== currentButton) {
-				button.setAttribute('active', 'false');
+		for (const button of layersButtons) {
+			if (button !== activeLayerButton) {
+				button.dataset.active = 'false';
 				button.style.color = 'rgb(237, 255, 255)';
 			}
 		}
@@ -787,12 +830,12 @@ export class Application {
 
 	// Geolocation
 	static #onBtnUserPositionClick() {
-		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
+		const geolocationActive = Application.#domElement.btnUserPosition.dataset.active;
 		Device.vibrate();
 
 		if (geolocationActive === 'false') {
 			GeolocationService.trackPosition(Application.#processGeolocationPosition, Application.#processGeolocationError, { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 }, 30000);
-			Application.#domElement.btnUserPosition.setAttribute('active', 'true');
+			Application.#domElement.btnUserPosition.dataset.active = 'true';
 			Application.#domElement.btnUserPosition.style.color = 'rgb(255, 165, 0)';
 			Application.#showToast('Geolocalización activada');
 		}
@@ -804,23 +847,22 @@ export class Application {
 
 	static async #processGeolocationPosition(position) {
 		const description = await Application.#getUserPositionDescription(position);
-		const geolocationActive = Application.#domElement.btnUserPosition.getAttribute('active');
+		const geolocationActive = Application.#domElement.btnUserPosition.dataset.active;
 
-		if (geolocationActive === 'false') {
-			return;
-		}
+		if (geolocationActive === 'true') {
 
-		if (!Application.#geolocationMarkerId) {
-			const entityId = MarkersManager.createMarker(position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
-			MarkersManager.addCircleToMarker(entityId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
-			Application.#geolocationMarkerId = entityId;
-			ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
+			if (!Application.#geolocationMarkerId) {
+				const entityId = MarkersManager.createMarker(position.coords.latitude, position.coords.longitude, 'Posición actual', description, Application.#markerPins.GEO_LOCATION_POSITION);
+				MarkersManager.addCircleToMarker(entityId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
+				Application.#geolocationMarkerId = entityId;
+				ViewerService.flyToPosition(position.coords.latitude, position.coords.longitude, Application.#DEFAULT_CAMERA_ALTITUDE, Application.#DEFAULT_CAMERA_HEADING, Application.#DEFAULT_CAMERA_PITCH);
 
-		}
-		else {
-			MarkersManager.updateMarker(Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
-			MarkersManager.updateMarkerCircle(Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
-			ViewerService.refreshScene();
+			}
+			else {
+				MarkersManager.updateMarker(Application.#geolocationMarkerId, position.coords.latitude, position.coords.longitude, 'Posición actual', description);
+				MarkersManager.updateMarkerCircle(Application.#geolocationMarkerId, position.coords.accuracy, Cesium.Color.ORANGE.withAlpha(0.5), true);
+				ViewerService.refreshScene();
+			}
 		}
 	}
 
@@ -854,7 +896,7 @@ export class Application {
 
 	static #stopGeolocation() {
 		GeolocationService.stopTrackingPosition();
-		Application.#domElement.btnUserPosition.setAttribute('active', 'false');
+		Application.#domElement.btnUserPosition.dataset.active = 'false';
 		Application.#domElement.btnUserPosition.style.color = 'rgb(237, 255, 255)';
 
 		if (Application.#geolocationMarkerId) {
@@ -869,18 +911,18 @@ export class Application {
 	static async #onBtnPanoramaClick() {
 		try {
 			Device.vibrate();
-			const headingTrackingActive = Application.#domElement.btnPanorama.getAttribute('active');
+			const headingTrackingActive = Application.#domElement.btnPanorama.dataset.active;
 
 			if (headingTrackingActive === 'false') {
-				await DeviceHeadingTracker.start(ViewerService.setCameraHeading, Application.#cameraHeading);
-				Application.#domElement.btnPanorama.setAttribute('active', 'true');
+				await DeviceHeadingTracker.start(Application.#processDeviceHeadingChange, Application.#currentCameraPosition.heading);
+				Application.#domElement.btnPanorama.dataset.active = 'true';
 				Application.#domElement.btnPanorama.style.color = 'rgb(255, 165, 0)';
 				Application.#domElement.compass.removeEventListener('dblclick', Application.#onCompassDoubleClick);
 				Application.#showToast('Sensor de orientación activado');
 			}
 			else {
 				DeviceHeadingTracker.stop();
-				Application.#domElement.btnPanorama.setAttribute('active', 'false');
+				Application.#domElement.btnPanorama.dataset.active = 'false';
 				Application.#domElement.btnPanorama.style.color = 'rgb(237, 255, 255)';
 				Application.#domElement.compass.addEventListener('dblclick', Application.#onCompassDoubleClick);
 				Application.#showToast('Sensor de orientación desactivado');
@@ -889,6 +931,26 @@ export class Application {
 		catch (err) {
 			console.error(err);
 			Application.#showToast(`Se ha producido un error en el sensor de orientación: ${err.message}`, Application.#toastType.ERROR);
+		}
+	}
+
+	static #latestSensorHeading = null;
+	static #isFrameRequested = false;
+
+	static #processDeviceHeadingChange(newHeading) {
+		Application.#latestSensorHeading = newHeading;
+
+		if (!Application.#isFrameRequested) {
+			Application.#isFrameRequested = true;
+			requestAnimationFrame(Application.#renderDeviceFrame);
+		}
+	}
+
+	static #renderDeviceFrame() {
+		Application.#isFrameRequested = false;
+
+		if (Application.#latestSensorHeading !== null) {
+			ViewerService.setCameraHeading(Application.#latestSensorHeading);
 		}
 	}
 }

@@ -5,6 +5,12 @@ export class DeviceHeadingTracker {
 	static #filterAlpha = 0.96;			// Alpha coefficient for the low-pass filter
 	static #previousHeading = null;
 
+	// Scratch variables to avoid allocations during sensor updates
+	static #scratchQuaternion = new Cesium.Quaternion();
+	static #scratchHPR = new Cesium.HeadingPitchRoll();
+	static #scratchMatrix3 = new Cesium.Matrix3();
+	static #scratchCartesian = new Cesium.Cartesian3();
+
 	static async start(onHeadingChange, cameraHeading) {
 		try {
 			if (location.protocol !== 'https:') {
@@ -27,6 +33,7 @@ export class DeviceHeadingTracker {
 			}
 		}
 		catch (err) {
+			DeviceHeadingTracker.#onHeadingChange = null;
 			DeviceHeadingTracker.#previousHeading = null;
 			throw err;
 		}
@@ -59,15 +66,18 @@ export class DeviceHeadingTracker {
 		DeviceHeadingTracker.#orientationSensor.addEventListener('reading', () => {
 			const q = DeviceHeadingTracker.#orientationSensor.quaternion;
 
-			if (!q) {
-				return;
-			}
+			if (!q) { return; }
 
-			const quaternion = { x: q[0], y: q[1], z: q[2], w: q[3] };
+			const quaternion = DeviceHeadingTracker.#scratchQuaternion;
+			quaternion.x = q[0];
+			quaternion.y = q[1];
+			quaternion.z = q[2];
+			quaternion.w = q[3];
 			let heading;
 
 			if (DeviceHeadingTracker.#isDeviceHorizontal(quaternion)) {
-				heading = Cesium.Math.toDegrees(Cesium.HeadingPitchRoll.fromQuaternion(quaternion).heading);
+				const hpr = Cesium.HeadingPitchRoll.fromQuaternion(quaternion, DeviceHeadingTracker.#scratchHPR);
+				heading = Cesium.Math.toDegrees(hpr.heading);
 			}
 			else {
 				heading = DeviceHeadingTracker.#headingFromQuaternion(quaternion);
@@ -81,17 +91,15 @@ export class DeviceHeadingTracker {
 	}
 
 	static #isDeviceHorizontal(quaternion) {
-		const orientationMatrix = Cesium.Matrix3.fromQuaternion(quaternion);
-		const deviceNormal = Cesium.Matrix3.getColumn(orientationMatrix, 2, new Cesium.Cartesian3());
+		const orientationMatrix = Cesium.Matrix3.fromQuaternion(quaternion, DeviceHeadingTracker.#scratchMatrix3);
+		const deviceNormal = Cesium.Matrix3.getColumn(orientationMatrix, 2, DeviceHeadingTracker.#scratchCartesian);
 		return Math.abs(deviceNormal.z) > 0.866; // = cos(30°)
 	}
 
 	static #headingFromQuaternion(quaternion) {
-		const orientationMatrix = Cesium.Matrix3.fromQuaternion(quaternion);
-		const deviceForward = Cesium.Matrix3.getColumn(orientationMatrix, 2, new Cesium.Cartesian3());
-		deviceForward.x = -deviceForward.x;
-		deviceForward.y = -deviceForward.y;
-		const headingRad = Math.atan2(deviceForward.x, deviceForward.y);
+		const orientationMatrix = Cesium.Matrix3.fromQuaternion(quaternion, DeviceHeadingTracker.#scratchMatrix3);
+		const deviceForward = Cesium.Matrix3.getColumn(orientationMatrix, 2, DeviceHeadingTracker.#scratchCartesian);
+		const headingRad = Math.atan2(-deviceForward.x, -deviceForward.y);
 		return (Cesium.Math.toDegrees(headingRad) + 360) % 360;
 	}
 
@@ -104,9 +112,6 @@ export class DeviceHeadingTracker {
 
 		if (event.webkitCompassHeading !== undefined) {
 			heading = event.webkitCompassHeading;
-		}
-		else if (event.absolute && event.alpha !== null) {
-			heading = 360 - event.alpha;
 		}
 		else if (event.alpha !== null) {
 			heading = 360 - event.alpha;
@@ -136,19 +141,9 @@ export class DeviceHeadingTracker {
 	}
 
 	static #getDeviceOrientationCorrection() {
-		if (window.screen?.orientation?.angle !== null) {
-			switch (window.screen.orientation.angle) {
-				case 90:
-					return 90;
-				case 270:
-					return -90;
-				case 0:
-				case 180:
-				default:
-					return 0;
-			}
-		}
-
+		const angle = window.screen?.orientation?.angle;
+		if (angle === 90) { return 90; }
+		if (angle === 270) { return -90; }
 		return 0;
 	}
 }
