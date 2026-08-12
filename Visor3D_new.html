@@ -5,15 +5,15 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, height=device-height, interactive-widget=overlays-content, initial-scale=1" />
 		<title>Visor 3D</title>
-		<script src="https://cesium.com/downloads/cesiumjs/releases/1.140/Build/Cesium/Cesium.js"></script>
-		<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.140/Build/Cesium/Widgets/widgets.css">
+		<script src="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Cesium.js"></script>
+		<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.142/Build/Cesium/Widgets/widgets.css">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 		<link rel="stylesheet" href="./css/globals.css">
 		<link rel="stylesheet" href="./css/controls.css">
 		<link rel="stylesheet" href="./css/viewer-container.css">
 		<link rel="stylesheet" href="./css/cesium-viewer-fullscreenContainer.css">
 		<link rel="stylesheet" href="./css/compass.css">
-		<link rel="stylesheet" href="./css/coordinates-container.css">
+		<link rel="stylesheet" href="./css/stats-dock.css">
 		<link rel="stylesheet" href="./css/toolbar.css">
 		<link rel="stylesheet" href="./css/toast.css">
 		<style>
@@ -405,7 +405,7 @@
 				padding: 0;
 			}
 
-			.liButton:hover {
+			.lineArtButton:hover {
 				background-color: var(--color-blue);
 				border-color: rgb(170, 238, 255);
 				box-shadow: 0 0 8px rgb(255, 255, 255);
@@ -463,10 +463,10 @@
 		<div id="viewerContainer" class="viewer-container"></div>
 		<div id="toastContainer"></div>
 
-		<button id="btnSlope" active="false" class="slopeButton"><i class="fa-solid fa-hill-avalanche"></i></button>
-		<button id="btnLineArt" active="false" class="lineArtButton"><i class="fa-solid fa-pen"></i></button>
-		<button id="btnUserPosition" active="false" class="userPositionButton"><i class="fa-solid fa-crosshairs"></i></button>
-		<button id="btnPanorama" active="false" class="panoramaButton"><i class="fa-solid fa-panorama"></i></button>		
+		<button id="btnSlope" data-active="false" class="slopeButton"><i class="fa-solid fa-hill-avalanche"></i></button>
+		<button id="btnLineArt" data-active="false" class="lineArtButton"><i class="fa-solid fa-pen"></i></button>
+		<button id="btnUserPosition" data-active="false" title="Activa/desactiva el GPS" class="userPositionButton"><i class="fa-solid fa-crosshairs"></i></button>
+		<button id="btnPanorama" data-active="false" class="panoramaButton"><i class="fa-solid fa-panorama"></i></button>		
 
 		<div class="compass">
 			<div class="compass-arrow"></div>
@@ -474,25 +474,37 @@
 		</div>
 
 		<div id="statsDock" class="stats-dock">
-			<div class="stat-slot">
+			<div id="divLat" class="stat-slot stat-slot-cursor">
 				<strong>Lat:</strong>
 				<span id="valLat">----</span>
     		</div>
-			<div class="stat-slot">
+			<div id="divLon" class="stat-slot stat-slot-cursor">
 				<strong>Lon:</strong>
 				<span id="valLon">----</span>
 			</div>
-			<div class="stat-slot">
+			<div id="divHeight" class="stat-slot stat-slot-cursor">
 				<strong>Altitud:</strong>
 				<span id="valHeight">----</span>
 			</div>
-			<div class="stat-slot">
+			<div id="divSlope" class="stat-slot stat-slot-cursor">
 				<strong>Pendiente:</strong>
 				<span id="valSlope">----</span>
 			</div>
-			<div class="stat-slot">
+			<div id="divAspect" class="stat-slot stat-slot-cursor">
 				<strong>Orientación:</strong>
 				<span id="valAspect">----</span>
+			</div>
+			<div id="divCameraHeight" class="stat-slot stat-slot-camera" title="Altitud de la cámara (sobre el nivel del mar)">
+				<i class="fa-solid fa-camera"></i>
+				<span id="valCameraHeight">----</span>
+			</div>
+			<div id="divCameraPitch" class="stat-slot stat-slot-camera" title="Inclinación de la cámara (cero = horizontal, positivo = hacia arriba, negativo = hacia abajo)">
+				<i id="iconCameraPitch" class="fa-solid fa-arrow-right-long"></i>
+				<span id="valCameraPitch">----</span>
+			</div>
+			<div id="divDistance" class="stat-slot stat-slot-camera" title="Distancia desde la posición del ratón hasta la cámara">
+				<i class="fa-solid fa-arrows-left-right"></i>
+				<span id="valDistance">----</span>
 			</div>
 		</div>
 
@@ -582,9 +594,7 @@
 				</details>
 			</details>
 		</div>
-
-		<div id="spinner"></div>
-
+		
 		<script type="module">
 			import {Application} from './script/Application.js';
 			Cesium.Ion.defaultAccessToken = null;
