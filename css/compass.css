@@ -27,7 +27,8 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	transition: transform 0.2s ease-out;
+	transition: transform 0.15s linear;
+	will-change: transform;
 	background: url(../images/compass.png) center no-repeat;
 	background-size: contain;
 }
