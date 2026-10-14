@@ -32,11 +32,11 @@ export class TilesetManager {
 		catch (err) {
 			TilesetManager.#viewer = viewer;
 			TilesetManager.#ready = false;
-			console.error(err);
+			console.error(`Failed to initialize tileset manager: ${err.message}`, err);
 		}
 	}
 
-	static async checkTilesetAvailability(cameraPosition) {
+	static updateTilesets(cameraPosition) {
 		if (!TilesetManager.#ready) {
 			return;
 		}
@@ -55,23 +55,9 @@ export class TilesetManager {
 				}
 
 				child.loading = true;
-
-				try {
-					const tileset = await Cesium.Cesium3DTileset.fromUrl(child.url);
-
-					// The camera may have left the sphere while loading.
-					if (child.inside) {
-						TilesetManager.#viewer.scene.primitives.add(tileset);
-						child.tileset = tileset;
-					} else {
-						tileset.destroy();
-					}
-				} catch (err) {
-					console.error(`Failed to load child tileset ${child.url}`, err);
-				} finally {
-					child.loading = false;
-				}
-			} else {
+				TilesetManager.#loadTileset(child);
+			}
+			else {
 				child.inside = false;
 
 				if (child.tileset) {
@@ -79,6 +65,26 @@ export class TilesetManager {
 					child.tileset = null;
 				}
 			}
+		}
+	}
+
+	static async #loadTileset(child) {
+		try {
+			const tileset = await Cesium.Cesium3DTileset.fromUrl(child.url);
+
+			if (child.inside) {
+				TilesetManager.#viewer.scene.primitives.add(tileset);
+				child.tileset = tileset;
+			}
+			else {
+				tileset.destroy();
+			}
+		}
+		catch (err) {
+			console.error(`Failed to load 3D tileset: ${child.url}`, err);
+		}
+		finally {
+			child.loading = false;
 		}
 	}
 }

@@ -321,8 +321,8 @@ export class Application {
 			Application.#domElement.compass.style.transform = `translate(-50%,-50%) rotate(${-compassHeading}deg)`;
 		}
 
-		// 3D tilesets availability check
-		await TilesetManager.checkTilesetAvailability(Application.#currentCameraPosition);
+		// Look for 3D tilesets near the camera position and load them if necessary
+		TilesetManager.updateTilesets(Application.#currentCameraPosition);
 	}
 
 	static #onCameraStopMove() { // Load POIs
