@@ -63,45 +63,11 @@ export class ViewerService {
 			Cesium.RequestScheduler.maximumRequests = 64;
 		}
 
-		// wmts-mapa-lidar.idee.es uses HTTP/1.1 and browsers strictly enforce a maximum of 6 concurrent connections per domain for HTTP/1.1
-		Cesium.RequestScheduler.requestsByServer['wmts-mapa-lidar.idee.es:443'] = 6;
-
-		// EXPERIMENTAL
-
-		//try {
-			// Point cloud
-			//const tileset = await Cesium.Cesium3DTileset.fromUrl("https://localhost:11443/3dtiles/tileset.json");			
-			//viewer.scene.primitives.add(tileset);
-
-			// 3D Tileset
-			//const dataSource = await Cesium.CzmlDataSource.load("https://betaserver.icgc.cat/cesium/data/Girona18_42.czml");
-			//viewer.dataSources.add(dataSource);
-
-			// MapBox Vector Tiles
-			// const west = Cesium.Math.toRadians(-4.8185);
-			// const south = Cesium.Math.toRadians(43.3005);
-			// const east = Cesium.Math.toRadians(-4.8155);
-			// const north = Cesium.Math.toRadians(43.3025);
-			// const rectangle = new Cesium.Rectangle(west, south, east, north);
-
-			// const mvt = await Cesium.MVTDataProvider.fromUrl('https://vt-btn.idee.es/1.0.0/btn/tile/{z}/{y}/{x}.pbf', {
-			// 	extent: rectangle,
-			// 	minZoom: 0,
-			// 	maxZoom: 14,
-			// });
-
-			// mvt.style = new Cesium.Cesium3DTileStyle({
-			// 	color: "color('red', 1.0)",
-			// 	strokeColor: "color('white', 1.0)",
-			// 	strokeWidth: 2
-			// });
-
-			//viewer.scene.primitives.add(mvt);
-
-		//} catch (error) {
-		//	console.error(`Error loading tileset: ${error}`);
-		//}
-
+		// wmts-mapa-lidar.idee.es an servicios3d.idee.es use HTTP/1.1 and browsers strictly enforce a maximum of 6 concurrent connections per domain for HTTP/1.1
+		Cesium.RequestScheduler.requestsByServer = {
+			'wmts-mapa-lidar.idee.es:443': 6, 
+			'servicios3d.idee.es:443': 6, // Used on TilesetManager for PNOA-MA 3D tilesets
+		};
 	}
 
 	static #getImageryProviders() {

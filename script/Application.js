@@ -3,6 +3,7 @@ import { Utils } from './Utils.js';
 import { ViewerService } from './ViewerService.js';
 import { POIFinder } from './POIFinder.js';
 import { POIManager } from './POIManager.js';
+import { TilesetManager } from './TilesetManager.js';
 import { CompassService } from './CompassService.js';
 import { ExternalDataManager } from './ExternalDataManager.js';
 import { GeocodingService } from './GeocodingService.js';
@@ -89,6 +90,7 @@ export class Application {
 			await ViewerService.initialize(Application.#domElement.viewerContainer.id, Device.isMobile());
 			await POIManager.initialize(ViewerService.viewer);
 			await MarkersManager.initialize(ViewerService.viewer);
+			await TilesetManager.initialize(ViewerService.viewer);
 			Application.#prepareUI();
 			Application.#bindEventListeners();
 			Application.#prepareScene();
@@ -302,7 +304,7 @@ export class Application {
 		}
 	}	
 
-	static #onCameraChange() { // Update compass and camera display
+	static async #onCameraChange() { // Update compass and camera display
 		const previousCameraHeading =  Application.#currentCameraPosition.heading;
 		ViewerService.getCameraPosition(Application.#currentCameraPosition);
 
@@ -318,6 +320,9 @@ export class Application {
 			const compassHeading = CompassService.getHeading(Application.#currentCameraPosition.heading);
 			Application.#domElement.compass.style.transform = `translate(-50%,-50%) rotate(${-compassHeading}deg)`;
 		}
+
+		// 3D tilesets availability check
+		await TilesetManager.checkTilesetAvailability(Application.#currentCameraPosition);
 	}
 
 	static #onCameraStopMove() { // Load POIs
