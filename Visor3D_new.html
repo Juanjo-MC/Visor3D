@@ -366,13 +366,34 @@
 				background-color: var(--color-blue-tr);
 				border-radius: 4px;
 			}
+
+			.tileSetsButton {
+				width: 32px;
+				height: 32px;
+				position: absolute;
+				top: 7px;
+				right: 122px;
+				border-radius: 4px;
+				border: 1px solid #444;
+				background-color: #303336;
+				color: var(--color-white);
+				justify-content: center;
+				align-items: center;
+				font: 20px sans-serif;
+				padding: 0;
+			}
+			.tileSetsButton:hover {
+				background-color: var(--color-blue);
+				border-color: rgb(170, 238, 255);
+				box-shadow: 0 0 8px rgb(255, 255, 255);
+			}
 			
 			.slopeButton {
 				width: 32px;
 				height: 32px;
 				position: absolute;
 				top: 7px;
-				right: 122px;
+				right: 160px;
 				border-radius: 4px;
 				border: 1px solid #444;
 				background-color: #303336;
@@ -394,7 +415,7 @@
 				height: 32px;
 				position: absolute;
 				top: 7px;
-				right: 160px;
+				right: 198px;
 				border-radius: 4px;
 				border: 1px solid #444;
 				background-color: #303336;
@@ -416,7 +437,7 @@
 				height: 32px;
 				position: absolute;
 				top: 7px;
-				right: 198px;
+				right: 236px;
 				border-radius: 4px;
 				border: 1px solid #444;
 				background-color: #303336;
@@ -438,7 +459,7 @@
 				height: 32px;
 				position: absolute;
 				top: 7px;
-				right: 236px;
+				right: 274px;
 				border-radius: 4px;
 				border: 1px solid #444;
 				background-color: #303336;
@@ -463,6 +484,7 @@
 		<div id="viewerContainer" class="viewer-container"></div>
 		<div id="toastContainer"></div>
 
+		<button id="btnTileSets" data-active="false" title="Muestra teselas 3D (donde las hay)" class="tileSetsButton"><i class="fa-brands fa-unity"></i></button>
 		<button id="btnSlope" data-active="false" class="slopeButton"><i class="fa-solid fa-hill-avalanche"></i></button>
 		<button id="btnLineArt" data-active="false" class="lineArtButton"><i class="fa-solid fa-pen"></i></button>
 		<button id="btnUserPosition" data-active="false" title="Activa/desactiva el GPS" class="userPositionButton"><i class="fa-solid fa-crosshairs"></i></button>
@@ -473,7 +495,7 @@
 			<div class="compass-circle"></div>
 		</div>
 
-		<div id="statsDock" class="stats-dock" style="display:none">
+		<div id="statsDock" class="stats-dock">
 			<div id="divLat" class="stat-slot stat-slot-cursor">
 				<strong>Lat:</strong>
 				<span id="valLat">----</span>
