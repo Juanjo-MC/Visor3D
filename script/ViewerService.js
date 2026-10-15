@@ -65,8 +65,8 @@ export class ViewerService {
 
 		// wmts-mapa-lidar.idee.es an servicios3d.idee.es use HTTP/1.1 and browsers strictly enforce a maximum of 6 concurrent connections per domain for HTTP/1.1
 		Cesium.RequestScheduler.requestsByServer = {
-			'wmts-mapa-lidar.idee.es:443': 6, 
-			'servicios3d.idee.es:443': 6, // Used on TilesetManager for PNOA-MA 3D tilesets
+			'wmts-mapa-lidar.idee.es:443': 6,
+			'servicios3d.idee.es:443': 6, // Used on TilesetManager for PNOA 3D tiles
 		};
 	}
 
@@ -190,12 +190,40 @@ export class ViewerService {
 	static #scratchCartesian = new Cesium.Cartesian3();
 	static #scratchCartographic = new Cesium.Cartographic();
 
+	// static getCartographicScreenPosition(windowPosition, result = { lat: null, lon: null }) {
+	// 	const scene = ViewerService.#viewer.scene;
+	// 	const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
+	// 	if (!ray) { return; }
+	// 	const cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
+	// 	if (!cartesian) { return; }
+	// 	const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian, scene.globe.ellipsoid, ViewerService.#scratchCartographic);
+	// 	result.lat = Cesium.Math.toDegrees(cartographicPosition.latitude);
+	// 	result.lon = Cesium.Math.toDegrees(cartographicPosition.longitude);
+	// 	return result;
+	// }
+	
 	static getCartographicScreenPosition(windowPosition, result = { lat: null, lon: null }) {
 		const scene = ViewerService.#viewer.scene;
-		const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
-		if (!ray) { return; }
-		const cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
-		if (!cartesian) { return; }
+
+		//const pickedObject = scene.pick(windowPosition);
+		//console.log("Picked object:", pickedObject);
+		//console.log("Primitive:", pickedObject?.primitive);
+
+		let cartesian;
+
+		// Try the rendered 3D model first.
+		if (scene.pickPositionSupported) {
+			cartesian = scene.pickPosition(windowPosition, ViewerService.#scratchCartesian);
+		}
+
+		// Fall back to terrain if no depth position is available.
+		if (!Cesium.defined(cartesian)) {
+			const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
+			if (!ray) {	return;}
+			cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
+		}
+
+		if (!Cesium.defined(cartesian)) { return; }
 		const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian, scene.globe.ellipsoid, ViewerService.#scratchCartographic);
 		result.lat = Cesium.Math.toDegrees(cartographicPosition.latitude);
 		result.lon = Cesium.Math.toDegrees(cartographicPosition.longitude);

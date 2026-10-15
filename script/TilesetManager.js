@@ -7,6 +7,8 @@ export class TilesetManager {
 	static #ready;
 
 	static async initialize(viewer) {
+		TilesetManager.#viewer = viewer;
+
 		try {
 			const json = await Utils.getJSONData(TilesetManager.#parentUrl);
 
@@ -25,22 +27,17 @@ export class TilesetManager {
 					inside: false
 				};
 			});
-
-			TilesetManager.#viewer = viewer;
+			
 			TilesetManager.#ready = true;
 		}
 		catch (err) {
-			TilesetManager.#viewer = viewer;
 			TilesetManager.#ready = false;
 			console.error(`Failed to initialize tileset manager: ${err.message}`, err);
 		}
 	}
 
 	static updateTilesets(cameraPosition) {
-		if (!TilesetManager.#ready) {
-			return;
-		}
-
+		if (!TilesetManager.#ready) { return; }
 		const position = Cesium.Cartesian3.fromDegrees(cameraPosition.lon, cameraPosition.lat, cameraPosition.altitude);
 
 		for (const child of TilesetManager.#children) {
@@ -49,11 +46,7 @@ export class TilesetManager {
 
 			if (insideBoundingSphere) {
 				child.inside = true;
-
-				if (child.tileset || child.loading) {
-					continue;
-				}
-
+				if (child.tileset || child.loading) { continue; }
 				child.loading = true;
 				TilesetManager.#loadTileset(child);
 			}
@@ -72,6 +65,7 @@ export class TilesetManager {
 		try {
 			const tileset = await Cesium.Cesium3DTileset.fromUrl(child.url);
 
+			// The camera may have moved outside the bounding sphere while the tileset was loading
 			if (child.inside) {
 				TilesetManager.#viewer.scene.primitives.add(tileset);
 				child.tileset = tileset;
@@ -85,6 +79,15 @@ export class TilesetManager {
 		}
 		finally {
 			child.loading = false;
+		}
+	}
+
+	static removeAllTilesets() {
+		for (const child of TilesetManager.#children) {
+			if (child.tileset) {
+				TilesetManager.#viewer.scene.primitives.remove(child.tileset);
+				child.tileset = null;
+			}
 		}
 	}
 }

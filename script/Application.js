@@ -68,10 +68,11 @@ export class Application {
 		searchResultsList: document.getElementById('searchResultsList'),
 		btnSearch: document.getElementById('btnSearch'),
 		btnClearSearch: document.getElementById('btnClearSearch'),
-		btnUserPosition: document.getElementById('btnUserPosition'),
 		btnPanorama: document.getElementById('btnPanorama'),
+		btnUserPosition: document.getElementById('btnUserPosition'),
 		btnSlope: document.getElementById('btnSlope'),
 		btnLineArt: document.getElementById('btnLineArt'),
+		btnTileSets: document.getElementById('btnTileSets'),
 		statsDock: document.getElementById('statsDock'),
 		valLat: document.getElementById('valLat'),
 		valLon: document.getElementById('valLon'),
@@ -83,7 +84,7 @@ export class Application {
 		valCameraPitch: document.getElementById('valCameraPitch'),
 		valDistance: document.getElementById('valDistance'),
 	});
-	
+
 	static async initialize() {
 		try {
 			POIFinder.initialize(await Utils.getCompressedJSONData(Application.#POIS_FILE_PATH));
@@ -138,11 +139,12 @@ export class Application {
 		Application.#domElement.searchBox.addEventListener('input', Application.#onSearchBoxInput);
 		Application.#domElement.btnSearch.addEventListener('click', Application.#onBtnSearchClick);
 		Application.#domElement.searchResultsList.addEventListener('change', Application.#onSeachResultsListChange);
-		Application.#domElement.btnClearSearch.addEventListener('click', Application.#onBtnClearSearchClick);
-		Application.#domElement.btnUserPosition.addEventListener('click', Application.#onBtnUserPositionClick);
+		Application.#domElement.btnClearSearch.addEventListener('click', Application.#onBtnClearSearchClick);		
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
+		Application.#domElement.btnUserPosition.addEventListener('click', Application.#onBtnUserPositionClick);
 		Application.#domElement.btnSlope.addEventListener('click', Application.#onBtnSlopeClick);
 		Application.#domElement.btnLineArt.addEventListener('click', Application.#onBtnLineArtClick);
+		Application.#domElement.btnTileSets.addEventListener('click', Application.#onBtnTileSetsClick);
 	}
 
 	static #prepareScene() {
@@ -302,10 +304,10 @@ export class Application {
 				console.error(err);
 			}
 		}
-	}	
+	}
 
 	static async #onCameraChange() { // Update compass and camera display
-		const previousCameraHeading =  Application.#currentCameraPosition.heading;
+		const previousCameraHeading = Application.#currentCameraPosition.heading;
 		ViewerService.getCameraPosition(Application.#currentCameraPosition);
 
 		if (!Device.isMobile() && Device.hasMouse()) { // Do not update camera display on mobile devices, as it is not visible			
@@ -321,8 +323,12 @@ export class Application {
 			Application.#domElement.compass.style.transform = `translate(-50%,-50%) rotate(${-compassHeading}deg)`;
 		}
 
-		// Look for 3D tilesets near the camera position and load them if necessary
-		TilesetManager.updateTilesets(Application.#currentCameraPosition);
+		const tilesetsActive = Application.#domElement.btnTileSets.dataset.active;
+
+		if (tilesetsActive === 'true') {
+			// Look for 3D tilesets near the camera position and load them if necessary
+			TilesetManager.updateTilesets(Application.#currentCameraPosition);
+		}
 	}
 
 	static #onCameraStopMove() { // Load POIs
@@ -508,7 +514,7 @@ export class Application {
 				const remainingTime = Application.#SLOPE_UPDATE_INTERVAL - timeSinceLastCall;
 				const latTarget = Application.#mousePositionScratch.lat;
 				const lonTarget = Application.#mousePositionScratch.lon;
-				
+
 				Application.#mousePositionScratch.lat = null;
 				Application.#mousePositionScratch.lon = null;
 				Application.#onMouseMoveThrottleTimeoutId = setTimeout(() => { Application.#fetchTerrainData(latTarget, lonTarget); }, remainingTime);
@@ -575,7 +581,7 @@ export class Application {
 		const x = event.clientX - compassRect.left;
 		const isRightHalf = x > compassRect.width / 2;
 		let currentHeading;
-		let newHeading;	
+		let newHeading;
 
 		if (isRightHalf) {
 			currentHeading = Math.ceil(Application.#currentCameraPosition.heading);
@@ -586,11 +592,11 @@ export class Application {
 			const offset = (currentHeading % 90) === 0 ? 0 : 90 - (currentHeading % 90); // Offset to next cardinal clockwise
 			newHeading = (currentHeading + offset - 90 + 360) % 360;
 		}
-		
+
 		const cardinalDirections = ['Norte', 'Este', 'Sur', 'Oeste'];
 		const headingText = cardinalDirections[newHeading / 90];
 		const headingDelta = Math.abs(((newHeading - currentHeading + 540) % 360) - 180);
-		
+
 		ViewerService.flyToPosition(Application.#currentCameraPosition.lat, Application.#currentCameraPosition.lon, Application.#currentCameraPosition.altitude, newHeading, Application.#currentCameraPosition.pitch, 5 * headingDelta / 90);
 		Application.#showToast(`Orientando el visor hacia el ${headingText}`, Application.#toastType.INFO, 5000 * headingDelta / 90);
 	}
@@ -776,6 +782,25 @@ export class Application {
 	}
 
 	// Layers
+
+	// 3D Tilesets
+	static #onBtnTileSetsClick() {
+		const tilesetsActive = Application.#domElement.btnTileSets.dataset.active;
+
+		if (tilesetsActive === 'false') {
+			TilesetManager.updateTilesets(Application.#currentCameraPosition);
+			Application.#domElement.btnTileSets.dataset.active = 'true';
+			Application.#domElement.btnTileSets.style.color = 'rgb(255, 165, 0)';
+			Application.#showToast('Teselas 3D activadas');
+		}
+		else {
+			TilesetManager.removeAllTilesets();
+			ViewerService.refreshScene();
+			Application.#domElement.btnTileSets.dataset.active = 'false';
+			Application.#domElement.btnTileSets.style.color = 'rgb(237, 255, 255)';
+			Application.#showToast('Teselas 3D desactivadas');
+		}
+	}
 
 	// Slope
 	static #onBtnSlopeClick() {
