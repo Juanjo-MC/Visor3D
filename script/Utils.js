@@ -29,7 +29,7 @@ export class Utils {
 				throw new Error(`Response status: ${response.status}`);
 			}
 
-			return await response;
+			return response;
 		}
 		catch (err) {
 			throw err;

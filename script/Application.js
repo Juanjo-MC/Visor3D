@@ -91,14 +91,17 @@ export class Application {
 			await ViewerService.initialize(Application.#domElement.viewerContainer.id, Device.isMobile());
 			await POIManager.initialize(ViewerService.viewer);
 			await MarkersManager.initialize(ViewerService.viewer);
-			await TilesetManager.initialize(ViewerService.viewer);
+			TilesetManager.initialize(ViewerService.viewer);
+			TilesetManager.addTileset('https://servicios3d.idee.es/pnoa-ma/json/tileset.json', { persistant: false, childrenAsSeparateTilesets: true });
+			//TilesetManager.addTileset('http://localhost:1180/3dtiles/tileset.json', { persistant: true, childrenAsSeparateTilesets: false });
 			Application.#prepareUI();
 			Application.#bindEventListeners();
 			Application.#prepareScene();
 		}
 		catch (err) {
 			console.error(err);
-			Application.#showToast(`Se ha producido un error al inicializar la aplicación: ${err.message}`, Application.#toastType.ERROR);
+			const message = err instanceof Error ? err.message : String(err ?? 'Unknown error');
+			Application.#showToast(`Se ha producido un error al inicializar la aplicación: ${message}`, Application.#toastType.ERROR);
 		}
 	}
 
@@ -139,7 +142,7 @@ export class Application {
 		Application.#domElement.searchBox.addEventListener('input', Application.#onSearchBoxInput);
 		Application.#domElement.btnSearch.addEventListener('click', Application.#onBtnSearchClick);
 		Application.#domElement.searchResultsList.addEventListener('change', Application.#onSeachResultsListChange);
-		Application.#domElement.btnClearSearch.addEventListener('click', Application.#onBtnClearSearchClick);		
+		Application.#domElement.btnClearSearch.addEventListener('click', Application.#onBtnClearSearchClick);
 		Application.#domElement.btnPanorama.addEventListener('click', Application.#onBtnPanoramaClick);
 		Application.#domElement.btnUserPosition.addEventListener('click', Application.#onBtnUserPositionClick);
 		Application.#domElement.btnSlope.addEventListener('click', Application.#onBtnSlopeClick);
@@ -306,7 +309,7 @@ export class Application {
 		}
 	}
 
-	static async #onCameraChange() { // Update compass and camera display
+	static async #onCameraChange() { // Update compass and camera display, load 3D tilesets
 		const previousCameraHeading = Application.#currentCameraPosition.heading;
 		ViewerService.getCameraPosition(Application.#currentCameraPosition);
 
@@ -327,7 +330,7 @@ export class Application {
 
 		if (tilesetsActive === 'true') {
 			// Look for 3D tilesets near the camera position and load them if necessary
-			TilesetManager.updateTilesets(Application.#currentCameraPosition);
+			TilesetManager.updateTilesetsVisibility(Application.#currentCameraPosition);
 		}
 	}
 
@@ -489,6 +492,7 @@ export class Application {
 
 	static #onMouseMove(movement) { // Update coordinates and slope details
 		ViewerService.getCartographicScreenPosition(movement.endPosition, Application.#mousePositionScratch);
+		const is3DModel = ViewerService.pickedObjectIs3DModel(movement.endPosition);
 
 		if (!Application.#mousePositionScratch.lat) {
 			if (Application.#slopeAbortController) {
@@ -508,7 +512,7 @@ export class Application {
 			clearTimeout(Application.#onMouseMoveThrottleTimeoutId);
 
 			if (timeSinceLastCall >= Application.#SLOPE_UPDATE_INTERVAL) {
-				Application.#fetchTerrainData(Application.#mousePositionScratch.lat, Application.#mousePositionScratch.lon);
+				Application.#fetchTerrainData(Application.#mousePositionScratch.lat, Application.#mousePositionScratch.lon, is3DModel);
 			}
 			else {
 				const remainingTime = Application.#SLOPE_UPDATE_INTERVAL - timeSinceLastCall;
@@ -517,12 +521,12 @@ export class Application {
 
 				Application.#mousePositionScratch.lat = null;
 				Application.#mousePositionScratch.lon = null;
-				Application.#onMouseMoveThrottleTimeoutId = setTimeout(() => { Application.#fetchTerrainData(latTarget, lonTarget); }, remainingTime);
+				Application.#onMouseMoveThrottleTimeoutId = setTimeout(() => { Application.#fetchTerrainData(latTarget, lonTarget, is3DModel); }, remainingTime);
 			}
 		}
 	}
 
-	static async #fetchTerrainData(lat, lon) {
+	static async #fetchTerrainData(lat, lon, is3DModel) {
 		Application.#lastExecutionTime = performance.now();
 
 		if (Application.#slopeAbortController) {
@@ -533,7 +537,7 @@ export class Application {
 		const { signal } = Application.#slopeAbortController;
 
 		try {
-			const slopeDetails = await ViewerService.getSlopeDetails(lat, lon, signal);
+			const slopeDetails = await ViewerService.getSlopeDetails(lat, lon, is3DModel, signal);
 
 			if (slopeDetails) {
 				ViewerService.getCameraPosition(Application.#currentCameraPosition);
@@ -788,13 +792,14 @@ export class Application {
 		const tilesetsActive = Application.#domElement.btnTileSets.dataset.active;
 
 		if (tilesetsActive === 'false') {
-			TilesetManager.updateTilesets(Application.#currentCameraPosition);
+			TilesetManager.updateTilesetsVisibility(Application.#currentCameraPosition);
+			ViewerService.refreshScene();
 			Application.#domElement.btnTileSets.dataset.active = 'true';
 			Application.#domElement.btnTileSets.style.color = 'rgb(255, 165, 0)';
 			Application.#showToast('Teselas 3D activadas');
 		}
 		else {
-			TilesetManager.removeAllTilesets();
+			TilesetManager.unloadAllTilesets();
 			ViewerService.refreshScene();
 			Application.#domElement.btnTileSets.dataset.active = 'false';
 			Application.#domElement.btnTileSets.style.color = 'rgb(237, 255, 255)';

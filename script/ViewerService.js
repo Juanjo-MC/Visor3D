@@ -179,9 +179,21 @@ export class ViewerService {
 		ViewerService.#viewer.scene.requestRender();
 	}
 
-	static async getElevation(lat, lon) {
+	static pickedObjectIs3DModel(windowPosition) {
+		const pickedObject = ViewerService.#viewer.scene.pick(windowPosition);
+		return pickedObject instanceof Cesium.Cesium3DTileFeature || pickedObject?.primitive instanceof Cesium.Cesium3DTileset;
+	}
+
+	static async getElevation(lat, lon, is3DModel = false) {
 		const position = [Cesium.Cartographic.fromDegrees(lon, lat)];
-		await Cesium.sampleTerrainMostDetailed(ViewerService.#viewer.terrainProvider, position);
+
+		if (is3DModel === false) {
+			await Cesium.sampleTerrainMostDetailed(ViewerService.#viewer.terrainProvider, position);
+		}
+		else {
+			await ViewerService.#viewer.scene.sampleHeightMostDetailed(position);
+		}
+
 		return position[0].height;
 	}
 
@@ -190,37 +202,19 @@ export class ViewerService {
 	static #scratchCartesian = new Cesium.Cartesian3();
 	static #scratchCartographic = new Cesium.Cartographic();
 
-	// static getCartographicScreenPosition(windowPosition, result = { lat: null, lon: null }) {
-	// 	const scene = ViewerService.#viewer.scene;
-	// 	const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
-	// 	if (!ray) { return; }
-	// 	const cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
-	// 	if (!cartesian) { return; }
-	// 	const cartographicPosition = Cesium.Cartographic.fromCartesian(cartesian, scene.globe.ellipsoid, ViewerService.#scratchCartographic);
-	// 	result.lat = Cesium.Math.toDegrees(cartographicPosition.latitude);
-	// 	result.lon = Cesium.Math.toDegrees(cartographicPosition.longitude);
-	// 	return result;
-	// }
-	
 	static getCartographicScreenPosition(windowPosition, result = { lat: null, lon: null }) {
 		const scene = ViewerService.#viewer.scene;
-
-		//const pickedObject = scene.pick(windowPosition);
-		//console.log("Picked object:", pickedObject);
-		//console.log("Primitive:", pickedObject?.primitive);
-
+		const is3DModel = ViewerService.pickedObjectIs3DModel(windowPosition);
 		let cartesian;
 
-		// Try the rendered 3D model first.
-		if (scene.pickPositionSupported) {
-			cartesian = scene.pickPosition(windowPosition, ViewerService.#scratchCartesian);
+		if (is3DModel === false) {
+			const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
+			if (!ray) { return; }
+			cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
 		}
 
-		// Fall back to terrain if no depth position is available.
-		if (!Cesium.defined(cartesian)) {
-			const ray = scene.camera.getPickRay(windowPosition, ViewerService.#scratchRay);
-			if (!ray) {	return;}
-			cartesian = scene.globe.pick(ray, scene, ViewerService.#scratchCartesian);
+		else {
+			cartesian = scene.pickPosition(windowPosition);
 		}
 
 		if (!Cesium.defined(cartesian)) { return; }
@@ -251,7 +245,7 @@ export class ViewerService {
 	static #scratchHorizontalNormal = new Cesium.Cartesian3();
 	static #scratchResult = { height: null, slope: null, aspect: null };
 
-	static async getSlopeDetails(lat, lon, signal = null) {
+	static async getSlopeDetails(lat, lon, is3DModel = false, signal = null) {
 		if (signal?.aborted) {
 			throw new DOMException('Aborted', 'AbortError');
 		}
@@ -263,7 +257,12 @@ export class ViewerService {
 		const pTemp1 = Cesium.Cartographic.fromDegrees(lon + offset, lat, 0, ViewerService.#scratchPositions[1]);
 		const pTemp2 = Cesium.Cartographic.fromDegrees(lon, lat + offset, 0, ViewerService.#scratchPositions[2]);
 
-		await Cesium.sampleTerrainMostDetailed(terrainProvider, ViewerService.#scratchPositions);
+		if (is3DModel === false) {
+			await Cesium.sampleTerrainMostDetailed(terrainProvider, ViewerService.#scratchPositions);
+		}
+		else {
+			await ViewerService.#viewer.scene.sampleHeightMostDetailed(ViewerService.#scratchPositions);
+		}
 
 		if (signal?.aborted) {
 			throw new DOMException('Aborted', 'AbortError');

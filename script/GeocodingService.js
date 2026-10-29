@@ -8,12 +8,12 @@ export class GeocodingService {
 	static #BASE_URL = 'https://www.cartociudad.es/geocoder/api/geocoder/';
 
 	static async getCandidates(searchTerm) {
-		const url = `${GeocodingService.#BASE_URL}candidates?q=${encodeURIComponent(searchTerm.trim())}`;
+		const url = new URL(`candidates?q=${searchTerm}`, GeocodingService.#BASE_URL).href;
 		return await Utils.getJSONData(url);
 	}
 
 	static async find(id, type) {
-		const url = `${GeocodingService.#BASE_URL}find?id=${id}&type=${type}`;
+		const url = new URL(`find?id=${id}&type=${type}`, GeocodingService.#BASE_URL).href;
 		const result = await Utils.getJSONData(url);
 		result.fullAddress = GeocodingService.#getFullAddress(result);
 		return result;
